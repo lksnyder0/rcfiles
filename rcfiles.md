@@ -1,4 +1,4 @@
 # RC Files
 ## Vim
-## Bash
 ## ZSH
+## tmux
