@@ -6,5 +6,5 @@ ln -s ~/.rcfiles/vimrc ~/.vimrc
 
 ln -s ~/.rcfiles/zshrc ~/.zshrc
 
-ln -s ~/.rcfiles/.tmux.conf
+ln -s ~/.rcfiles/tmux.conf ~/.tmux.conf
 
