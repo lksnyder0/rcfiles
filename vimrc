@@ -24,6 +24,8 @@ filetype off
 " Enable syntax highlighting
 syntax on
  
+" Font setting
+set guifont=Sauce\ Code\ Powerline\ Regular\ 10 
 
 " Vundle config
 " -----------------------------------------------------------
@@ -152,8 +154,7 @@ let g:neocomplete#sources#omni#input_patterns.perl = '\h\w*->\h\w*\|\h\w*::'
 "
 " Start Airline
 "
-let g:airline_powerline_fonts = 1
-set guifont=Liberation\ Mono\ for\ Powerline\ 10 
+" let g:airline_powerline_fonts = 1
 "
 " End Airline
 
