@@ -52,7 +52,7 @@ filetype plugin indent on
 " -----------------------------------------------------------
 " End Vundle
 
-" Start syntastic
+" Start Syntastic
 
 set statusline+=%#warningmsg#
 set statusline+=%{SyntasticStatuslineFlag()}
@@ -62,8 +62,9 @@ let g:syntastic_always_populate_loc_list = 1
 let g:syntastic_auto_loc_list = 1
 let g:syntastic_check_on_open = 1
 let g:syntastic_check_on_wq = 0
+let g:syntastic_quiet_messages = { "type": "style"  }
 
-" End sumtastic
+" End Syntastic
 
 " Start Neocomplete
 "Note: This option must set it in .vimrc(_vimrc).  NOT IN .gvimrc(_gvimrc)!
