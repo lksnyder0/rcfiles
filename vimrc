@@ -37,16 +37,13 @@ call vundle#begin()
 "
 " let Vundle manage Vundle, required
 Plugin 'VundleVim/Vundle.vim'
-
 Plugin 'kien/ctrlp.vim'
-
 Plugin 'jistr/vim-nerdtree-tabs'
-
+Plugin 'scrooloose/nerdtree'
 Plugin 'bling/vim-airline'
-
 Plugin 'scrooloose/syntastic'
-
 Plugin 'Shougo/neocomplete.vim'
+Plugin 'tpope/vim-fugitive.git'
 
 call vundle#end()
 filetype plugin indent on
@@ -158,6 +155,12 @@ let g:neocomplete#sources#omni#input_patterns.perl = '\h\w*->\h\w*\|\h\w*::'
 "
 " End Airline
 
+" Start NERDTree
+
+autocmd vimenter * NERDTree
+autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTreeType") && b:NERDTreeType == "primary") | q | endif
+
+" End NERDTree
 
 "------------------------------------------------------------
 " Must have options {{{1
