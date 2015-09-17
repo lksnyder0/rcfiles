@@ -1,6 +1,7 @@
 # RC Files
 ## Vim
-[Sauce](https://www.safaribooksonline.com/blog/2014/11/23/way-vim-ide/)
+* [Sauce 1](https://www.safaribooksonline.com/blog/2014/11/23/way-vim-ide/)
+* [Sauce 2](http://vim.wikia.com/wiki/Example_vimrc)
 ### Plugins
  * [ctrl-p](https://github.com/kien/ctrlp.vim)
  * [NERDTree](https://github.com/scrooloose/nerdtree)
