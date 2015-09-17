@@ -8,7 +8,9 @@
  * [vim-airline](https://github.com/bling/vim-airline)
  * [Syntastic](https://github.com/scrooloose/syntastic)
  * [Fugitive](https://github.com/tpope/vim-fugitive)
+
 ## ZSH
+
 ### Plugins
  * [OhMyZSH](https://github.com/robbyrussell/oh-my-zsh)
   * git
@@ -16,4 +18,5 @@
   * last-working-dir
   * nyan
   * screen
+
 ## tmux
