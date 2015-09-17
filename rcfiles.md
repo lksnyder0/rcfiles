@@ -9,6 +9,7 @@
  * [vim-airline](https://github.com/bling/vim-airline)
  * [Syntastic](https://github.com/scrooloose/syntastic)
  * [Fugitive](https://github.com/tpope/vim-fugitive)
+ * [Auto Pairs](https://github.com/jiangmiao/auto-pairs)
 
 ## ZSH
 
