@@ -3,7 +3,7 @@
 ## Install
 The install script only works on debian and ubuntu
 
-```
+```bash
 curl -o- https://raw.githubusercontent.com/lksnyder0/rcfiles/master/install.sh | bash
 ```
 
