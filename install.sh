@@ -9,6 +9,9 @@ git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
 
 sh -c "$(curl -fsSL https://raw.github.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
 
+# Install rcfiles
+sleep 2;
+
 git clone https://github.com/lksnyder0/rcfiles.git ~/.rcfiles || exit 1
 
 ln -f -s ~/.rcfiles/vimrc ~/.vimrc

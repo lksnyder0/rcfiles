@@ -1,5 +1,12 @@
 # RC Files
 
+## Install
+The install script only works on debian and ubuntu
+
+```
+curl -o- https://raw.githubusercontent.com/lksnyder0/rcfiles/master/install.sh | bash
+```
+
 ## Vim
 * [Sauce 1](https://www.safaribooksonline.com/blog/2014/11/23/way-vim-ide/)
 * [Sauce 2](http://vim.wikia.com/wiki/Example_vimrc)
