@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sudo aptitude install vim-nox tmux zsh curl
+sudo aptitude install vim-nox tmux zsh curl git
 
 ## Install Vundle
 git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
