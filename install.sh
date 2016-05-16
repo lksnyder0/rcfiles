@@ -11,7 +11,7 @@ sh -c "$(curl -fsSL https://raw.github.com/robbyrussell/oh-my-zsh/master/tools/i
 
 reset
 
-git clone https://gist.github.com/576268fc0b81b9dd3909.git ~/.rcfiles || exit 1
+git clone git@gitlab.com:lksnyder0/CheatSheets.git ~/.rcfiles || exit 1
 
 ln -f -s ~/.rcfiles/vimrc ~/.vimrc
 
