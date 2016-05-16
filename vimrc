@@ -45,6 +45,8 @@ Plugin 'scrooloose/syntastic'
 Plugin 'Shougo/neocomplete.vim'
 Plugin 'tpope/vim-fugitive.git'
 Plugin 'jiangmiao/auto-pairs'
+Plugin 'mkitt/tabline.vim'
+Plugin 'vim-scripts/restore_view.vim'
 
 call vundle#end()
 filetype plugin indent on
@@ -304,3 +306,16 @@ map Y y$
 nnoremap <C-L> :nohl<CR><C-L>
  
 "------------------------------------------------------------
+"
+" Code folding
+" za to toggle folding
+" zM to close all folds
+" zr to open ond fold
+" zR to open all folds
+set foldmethod=indent
+
+
+"------------------------------------------------------------
+" Setting view options
+
+set viewoptions=cursor,folds,slash,unix
