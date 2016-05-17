@@ -11,7 +11,9 @@ sh -c "$(curl -fsSL https://raw.github.com/robbyrussell/oh-my-zsh/master/tools/i
 
 reset
 
-git clone git@gitlab.com:lksnyder0/CheatSheets.git ~/.rcfiles || exit 1
+git clone https://gitlab.com/lksnyder0/rcfiles.git ~/.rcfiles || exit 1
+git submodule init
+git submodule update
 
 ln -f -s ~/.rcfiles/vimrc ~/.vimrc
 
