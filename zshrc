@@ -85,3 +85,7 @@ alias ghoststatus='sudo su ghost -c "pm2 status"'
 
 PERL_MB_OPT="--install_base \"/home/luke/perl5\""; export PERL_MB_OPT;
 PERL_MM_OPT="INSTALL_BASE=/home/luke/perl5"; export PERL_MM_OPT;
+
+for FILE in `find ~/.rcfiles/hostspecific/zsh -name "*.sh"`; do
+    source $FILE
+done

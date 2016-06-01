@@ -1,1 +1,2 @@
 *.swp
+hostspecific/zsh/*.sh
