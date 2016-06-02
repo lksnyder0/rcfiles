@@ -2,6 +2,8 @@
 
 sudo aptitude install vim-nox tmux zsh curl git
 
+reset
+
 ## Install Vundle
 git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
 
@@ -9,7 +11,7 @@ git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
 
 sh -c "$(curl -fsSL https://raw.github.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
 
-reset
+sudo usermod -s /bin/zsh luke
 
 git clone https://gitlab.com/lksnyder0/rcfiles.git ~/.rcfiles || exit 1
 git submodule init
