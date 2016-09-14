@@ -4,7 +4,7 @@
 The install script only works on debian and ubuntu
 
 ```bash
-curl -o- https://raw.githubusercontent.com/lksnyder0/rcfiles/master/install.sh | bash
+curl -o- https://gitlab.com/lksnyder0/rcfiles/raw/master/install.sh | bash
 ```
 
 ## Vim
@@ -29,5 +29,3 @@ curl -o- https://raw.githubusercontent.com/lksnyder0/rcfiles/master/install.sh |
   * last-working-dir
   * nyan
   * screen
-
-## tmux
