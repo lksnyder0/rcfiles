@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sudo aptitude install vim-nox tmux zsh curl git
+sudo apt-get install -y vim-nox tmux zsh curl git
 
 reset
 
