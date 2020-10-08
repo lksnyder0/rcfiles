@@ -39,7 +39,6 @@ call vundle#begin()
 Plugin 'VundleVim/Vundle.vim'
 Plugin 'kien/ctrlp.vim'
 Plugin 'scrooloose/nerdtree'
-Bundle 'jistr/vim-nerdtree-tabs'
 Plugin 'bling/vim-airline'
 Plugin 'scrooloose/syntastic'
 Plugin 'Shougo/neocomplete.vim'
@@ -161,14 +160,14 @@ let g:neocomplete#sources#omni#input_patterns.perl = '\h\w*->\h\w*\|\h\w*::'
 
 " Start NERDTree
 
-" autocmd vimenter * NERDTree
-" autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTreeType") && b:NERDTreeType == "primary") | q | endif
+autocmd vimenter * NERDTree
+autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTreeType") && b:NERDTreeType == "primary") | q | endif
 
 " End NERDTree
 "
 " Start NERDTreeTabs
 
-let g:nerdtree_tabs_open_on_console_startup = 1
+" let g:nerdtree_tabs_open_on_console_startup = 1
 
 " End NERDTreeTabs
 
@@ -272,7 +271,7 @@ set number
 set notimeout ttimeout ttimeoutlen=200
  
 " Use <F11> to toggle between 'paste' and 'nopaste'
-set pastetoggle=<F11>
+set pastetoggle=<f5>
  
  
 "------------------------------------------------------------
@@ -290,8 +289,13 @@ set expandtab
 " four characters wide.
 "set shiftwidth=4
 "set tabstop=4
- 
- 
+
+augroup langindention
+  autocmd!
+  autocmd FileType yaml setlocal shiftwidth=2 softtabstop=2
+  autocmd FileType vim setlocal shiftwidth=2 softtabstop=2
+augroup END
+
 "------------------------------------------------------------
 " Mappings {{{1
 "
@@ -312,7 +316,7 @@ nnoremap <C-L> :nohl<CR><C-L>
 " zM to close all folds
 " zr to open ond fold
 " zR to open all folds
-set foldmethod=indent
+" set foldmethod=indent
 
 
 "------------------------------------------------------------
