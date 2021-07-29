@@ -23,4 +23,4 @@ ln -f -s ~/.rcfiles/zshrc ~/.zshrc
 
 ln -f -s ~/.rcfiles/tmux.conf ~/.tmux.conf
 
-vim +PluginInstall +qall
+vim +PlugInstall +qall
