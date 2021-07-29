@@ -65,11 +65,6 @@ autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTreeType") && b:NERDTree
 
 " End NERDTree
 "
-" Start NERDTreeTabs
-
-" let g:nerdtree_tabs_open_on_console_startup = 1
-
-" End NERDTreeTabs
 "Allows the reuse of a window without saving the buffer. BE CAREFUL!
 set hidden
  
