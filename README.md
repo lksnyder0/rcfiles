@@ -12,11 +12,11 @@ curl -o- https://gitlab.com/lksnyder0/rcfiles/raw/master/install.sh | bash
 * [Sauce 2](http://vim.wikia.com/wiki/Example_vimrc)
 
 ### Plugins
- * [ctrl-p](https://github.com/kien/ctrlp.vim)
+ * [ctrlp](https://github.com/ctrlpvim/ctrlp.vim)
  * [NERDTree](https://github.com/scrooloose/nerdtree)
- * [NERDTreeTabs](https://github.com/jistr/vim-nerdtree-tabs)
  * [vim-airline](https://github.com/bling/vim-airline)
  * [Syntastic](https://github.com/scrooloose/syntastic)
+ * [jedi-vim](https://github.com/davidhalter/jedi-vim)
  * [Fugitive](https://github.com/tpope/vim-fugitive)
  * [Auto Pairs](https://github.com/jiangmiao/auto-pairs)
 
@@ -24,8 +24,13 @@ curl -o- https://gitlab.com/lksnyder0/rcfiles/raw/master/install.sh | bash
 
 ### Plugins
  * [OhMyZSH](https://github.com/robbyrussell/oh-my-zsh)
-  * git
-  * sprunge
-  * last-working-dir
-  * nyan
-  * screen
+  * gitignore
+  * git-prompt
+  * docker
+  * tmux
+  * zsh-nagivation-tools
+  * ssh-agent
+  * archlinux
+  * pipenv
+  * zsh-interactive-cd
+
