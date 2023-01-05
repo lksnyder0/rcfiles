@@ -1,3 +1,6 @@
+if (( ! ${fpath[(I)/usr/local/share/zsh/site-functions]}  )); then
+      FPATH=/usr/local/share/zsh/site-functions:$FPATH
+fi
 # Path to your oh-my-zsh installation.
 export ZSH=$HOME/.oh-my-zsh
 
@@ -46,13 +49,13 @@ ZSH_THEME="robbyrussell"
 zstyle :omz:plugins:ssh-agent agent-forwarding on
 
 # tmux settings
-export ZSH_TMUX_AUTOSTART=true
+# export ZSH_TMUX_AUTOSTART=true
 
 # Which plugins would you like to load? (plugins can be found in ~/.oh-my-zsh/plugins/*)
 # Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(gitignore git-prompt docker tmux zsh-navigation-tools ssh-agent archlinux pipenv zsh-interactive-cd)
+plugins=(docker tmux zsh-navigation-tools ssh-agent archlinux zsh-interactive-cd github)
 
 source $ZSH/oh-my-zsh.sh
 
@@ -81,6 +84,7 @@ fi
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
 alias reloadzsh="source ~/.zshrc"
+alias lah="ls -lah"
 
 for FILE in `find ~/.rcfiles/hostspecific/zsh -name "*.sh"`; do
     source $FILE
@@ -95,3 +99,7 @@ export NVM_DIR="$HOME/.nvm"
 export PYENV_ROOT="$HOME/.pyenv"
 command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
+
+export PIPENV_VENV_IN_PROJECT=1
+
+export PATH="$HOME/.poetry/bin:$PATH"
