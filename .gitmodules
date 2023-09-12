@@ -1,6 +1,3 @@
 [submodule "cheatsheets"]
 	path = cheatsheets
 	url = https://gitlab.com/lksnyder0/CheatSheets.git
-[submodule "nvim"]
-	path = nvim
-	url = git@github.com:lksnyder0/nvim-configs.git
