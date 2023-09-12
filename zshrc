@@ -9,7 +9,9 @@ export ZSH=$HOME/.oh-my-zsh
 # Optionally, if you set this to "random", it'll load a random theme each
 # time that oh-my-zsh is loaded.
 #ZSH_THEME="blinks"
-ZSH_THEME="robbyrussell"
+ZSH_THEME="bira"
+# ZSH_THEME="agnoster"
+# ZSH_THEME="robbyrussell"
 
 # Uncomment the following line to use case-sensitive completion.
 # CASE_SENSITIVE="true"
@@ -31,6 +33,7 @@ ZSH_THEME="robbyrussell"
 
 # Uncomment the following line to display red dots whilst waiting for completion.
 # COMPLETION_WAITING_DOTS="true"
+COMPLETION_WAITING_DOTS="true"
 
 # Uncomment the following line if you want to disable marking untracked files
 # under VCS as dirty. This makes repository status check for large repositories
@@ -55,13 +58,13 @@ zstyle :omz:plugins:ssh-agent agent-forwarding on
 # Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(docker tmux zsh-navigation-tools ssh-agent archlinux zsh-interactive-cd github)
+plugins=(docker tmux zsh-navigation-tools ssh-agent archlinux zsh-interactive-cd github terraform)
 
 source $ZSH/oh-my-zsh.sh
 
 # User configuration
 
-export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:${HOME}/.local/bin"
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:${HOME}/.local/bin:/usr/local/go/bin:${HOME}/go/bin"
 # export MANPATH="/usr/local/man:$MANPATH"
 
 # You may need to manually set your language environment
@@ -96,10 +99,21 @@ export PATH="$PATH:$HOME/.rvm/bin"
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-export PYENV_ROOT="$HOME/.pyenv"
-command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init -)"
+# export PYENV_ROOT="$HOME/.pyenv"
+# command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
+# eval "$(pyenv init -)"
+# aws-vault completions
+eval "$(curl -fs https://raw.githubusercontent.com/99designs/aws-vault/master/contrib/completions/zsh/aws-vault.zsh)"
 
 export PIPENV_VENV_IN_PROJECT=1
 
 export PATH="$HOME/.poetry/bin:$PATH"
+
+export AWS_PROFILE="prod_plat"
+export AWS_VAULT_BACKEND="file"
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+export PATH="$(brew --prefix libpq)/bin:$PATH"
+. /home/linuxbrew/.linuxbrew/opt/asdf/libexec/asdf.sh
+export AWS_PROFILE=sandbox
+export AWS_VAULT_BACKEND=file
+export AWS_PROFILE=portal
