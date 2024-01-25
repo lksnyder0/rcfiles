@@ -8,6 +8,9 @@ curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo 
 sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list
 
+## Setup WSLu
+sudo add-apt-repository -y ppa:wslutilities/wslu
+
 sudo apt-get update
 sudo apt-get install -y python3-pip \
     python3-dev \
@@ -30,6 +33,7 @@ sudo apt-get install -y python3-pip \
     tree \
     ssh-askpass
     build-essential \
+    wslu \
     fzf
 
 ## Install OhMyZSH
