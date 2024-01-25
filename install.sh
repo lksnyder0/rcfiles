@@ -19,6 +19,7 @@ sudo apt-get install -y python3-pip \
     ruby \
     ruby-dev \
     python3-venv \
+    gh \
     fzf
 
 ## Install OhMyZSH
@@ -46,6 +47,8 @@ sudo gem install solargraph
 
 ## Get ASDF
 git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.0
+### Activate it
+. "$HOME/.asdf/asdf.sh"
 
 git clone https://gitlab.com/lksnyder0/rcfiles.git ~/.rcfiles || exit 1
 
@@ -70,4 +73,7 @@ cd nvim
 
 python3 -m pip install requirements.devbox.txt
 
-cd ~/.config/nvim
+cd ~
+asdf plugin-add aws-vault https://github.com/karancode/asdf-aws-vault.git
+
+asdf install aws-vault
