@@ -6,7 +6,20 @@ wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/
 echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
 
 sudo apt-get update
-sudo apt-get install -y python3-pip python3-dev tmux git zsh stow squashfuse npm terraform terraform-ls ruby ruby-dev python3-venv
+sudo apt-get install -y python3-pip \
+    python3-dev \
+    tmux \
+    git \
+    zsh \
+    stow \
+    squashfuse \
+    npm \
+    terraform \
+    terraform-ls \
+    ruby \
+    ruby-dev \
+    python3-venv \
+    fzf
 
 ## Install OhMyZSH
 
@@ -27,6 +40,9 @@ mv nvim.appimage ~/.local/bin/
 
 ## Get Solargraph (ruby lsp)
 sudo gem install solargraph
+
+## Get ASDF
+git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.0
 
 git clone https://gitlab.com/lksnyder0/rcfiles.git ~/.rcfiles || exit 1
 

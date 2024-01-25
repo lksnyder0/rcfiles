@@ -125,10 +125,9 @@ export PIPENV_VENV_IN_PROJECT=1
 
 export PATH="$HOME/.poetry/bin:$PATH"
 
-export AWS_VAULT_BACKEND="file"
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-export PATH="$(brew --prefix libpq)/bin:$PATH"
-. /home/linuxbrew/.linuxbrew/opt/asdf/libexec/asdf.sh
+# export AWS_VAULT_BACKEND="file"
+# eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+# export PATH="$(brew --prefix libpq)/bin:$PATH"
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
