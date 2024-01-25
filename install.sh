@@ -1,9 +1,12 @@
 #!/bin/bash
-
-
 ## Setup Terraform for later
 wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+
+## Setup GitHub CLI Repo
+curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /usr/share/keyrings/githubcli-archive-keyring.gpg
+sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list
 
 sudo apt-get update
 sudo apt-get install -y python3-pip \
@@ -20,6 +23,12 @@ sudo apt-get install -y python3-pip \
     ruby-dev \
     python3-venv \
     gh \
+    zstd \
+    awscli \
+    ansible \
+    gnome-keyring \
+    tree \
+    build-essential \
     fzf
 
 ## Install OhMyZSH
