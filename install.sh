@@ -28,6 +28,7 @@ sudo apt-get install -y python3-pip \
     ansible \
     gnome-keyring \
     tree \
+    ssh-askpass
     build-essential \
     fzf
 
