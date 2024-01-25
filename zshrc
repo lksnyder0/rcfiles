@@ -66,6 +66,7 @@ export ZSH_TMUX_AUTOSTART=false
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(
+  asdf
   docker
   tmux
   zsh-navigation-tools
@@ -74,7 +75,6 @@ plugins=(
   zsh-interactive-cd
   github
   terraform
-  zsh-aws-vault
 )
 
 source $ZSH/oh-my-zsh.sh
