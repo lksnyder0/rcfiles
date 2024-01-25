@@ -43,6 +43,8 @@ ln -f -s ~/.rcfiles/zshrc ~/.zshrc
 
 ln -f -s ~/.rcfiles/tmux.conf ~/.tmux.conf
 
+ln -f -s ~/.rcfiles/p10k.zsh ~/.p10k.zsh
+
 cd nvim
 
 python3 -m pip install requirements.devbox.txt
