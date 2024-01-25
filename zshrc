@@ -66,7 +66,6 @@ export ZSH_TMUX_AUTOSTART=false
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(
-  asdf
   docker
   tmux
   zsh-navigation-tools
@@ -128,6 +127,11 @@ export PATH="$HOME/.poetry/bin:$PATH"
 # export AWS_VAULT_BACKEND="file"
 # eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 # export PATH="$(brew --prefix libpq)/bin:$PATH"
+. "$HOME/.asdf/asdf.sh"
+# append completions to fpath
+fpath=(${ASDF_DIR}/completions $fpath)
+# initialise completions with ZSH's compinit
+autoload -Uz compinit && compinit
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
