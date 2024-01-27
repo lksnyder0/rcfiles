@@ -14,6 +14,7 @@ sudo add-apt-repository -y ppa:wslutilities/wslu
 sudo apt-get update
 sudo apt-get install -y python3-pip \
     python3-dev \
+    python3-pkgconfig \
     tmux \
     git \
     zsh \
@@ -31,10 +32,11 @@ sudo apt-get install -y python3-pip \
     ansible \
     gnome-keyring \
     tree \
-    ssh-askpass
+    ssh-askpass \
     build-essential \
     wslu \
-    fzf
+    fzf \
+    libcairo2-dev
 
 ## Install OhMyZSH
 
@@ -55,6 +57,7 @@ mkdir ~/.local/bin
 curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim.appimage
 chmod u+x nvim.appimage
 mv nvim.appimage ~/.local/bin/
+ln -s ~/.local/bin/nvim.appimmage ~/.local/bin/nvim
 
 ## Get Solargraph (ruby lsp)
 sudo gem install solargraph
