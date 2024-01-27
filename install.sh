@@ -48,7 +48,7 @@ curl -qL https://www.npmjs.com/install.sh | sh
 
 ## Install Go
 curl -o go.tar.gz https://dl.google.com/go/go1.21.6.linux-amd64.tar.gz
-rm -rf /usr/local/go && tar -C /usr/local -xzf go.tar.gz
+sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go.tar.gz
 
 ## Install Neovim
 mkdir ~/.local/bin
@@ -85,9 +85,8 @@ ln -f -s ~/.rcfiles/tool-versions ~/.tool-versions
 
 cd nvim
 
-python3 -m pip install requirements.devbox.txt
+python3 -m pip install -r requirements.devbox.txt
 
 cd ~
 asdf plugin-add aws-vault https://github.com/karancode/asdf-aws-vault.git
-
 asdf install aws-vault
