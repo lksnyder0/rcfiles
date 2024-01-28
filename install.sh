@@ -23,8 +23,6 @@ sudo apt-get install -y python3-pip \
     npm \
     terraform \
     terraform-ls \
-    ruby \
-    ruby-dev \
     python3-venv \
     gh \
     zstd \
