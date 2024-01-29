@@ -1,0 +1,6 @@
+update_rcfiles () (
+  cd "${HOME}/.rcfiles"
+  git pull
+  git submodule update
+  git submodule sync
+)
