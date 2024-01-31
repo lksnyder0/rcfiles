@@ -126,6 +126,7 @@ export PIPENV_VENV_IN_PROJECT=1
 export PATH="$HOME/.poetry/bin:$PATH"
 
 # export AWS_VAULT_BACKEND="file"
+export AWS_VAULT_BACKEND="secret-service"
 # eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 # export PATH="$(brew --prefix libpq)/bin:$PATH"
 . "$HOME/.asdf/asdf.sh"
@@ -137,6 +138,7 @@ autoload -Uz compinit && compinit
 ## Add custom functions
 FPATH=${HOME}/.rcfiles/zfunc:$FPATH
 autoload -Uz update_rcfiles
+autoload -Uz commit_rcfiles
 autoload -Uz avs
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.

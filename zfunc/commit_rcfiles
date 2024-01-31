@@ -1,0 +1,5 @@
+commit_rcfiles () (
+  cd "${HOME}/.rcfiles"
+  git add .
+  git commit -a
+)
