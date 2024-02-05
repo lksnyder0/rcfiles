@@ -91,3 +91,10 @@ python3 -m pip install -r requirements.devbox.txt
 cd ~
 asdf plugin-add aws-vault https://github.com/karancode/asdf-aws-vault.git
 asdf install aws-vault
+
+## Configure git
+git config --global user.email "709836+lksnyder0@users.noreply.github.com"
+git config --global user.name "Luke Snyder"
+git config --global init.defaultbranch main
+git config --global commit.gpgsign true
+git config --global push.autosetupremote true

@@ -104,6 +104,7 @@ alias reload_p10k="p10k reload"
 alias lah="ls -lah"
 alias incognito=" unset HISTFILE"
 alias cognito="set HISTFILE=~/.zsh_history"
+alias rex_ttt="ttt roll -port 443 https://ttt.stotlers.com rampart ${USERNAME}"
 
 for FILE in `find ~/.rcfiles/hostspecific/zsh -name "*.sh"`; do
     source $FILE
@@ -127,8 +128,6 @@ export PATH="$HOME/.poetry/bin:$PATH"
 
 # export AWS_VAULT_BACKEND="file"
 export AWS_VAULT_BACKEND="secret-service"
-# eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-# export PATH="$(brew --prefix libpq)/bin:$PATH"
 . "$HOME/.asdf/asdf.sh"
 # append completions to fpath
 fpath=(${ASDF_DIR}/completions $fpath)
