@@ -1,0 +1,13 @@
+liftoff () {
+    # If no argument is provided
+    if [[ ! -n $1 ]]; then
+        echo "Usage: liftoff <space_id>"
+        return
+    fi
+    # Only do this when needed. Use `unset $SPACELIFT_TOKEN` to reauth
+    if [[ ! -v SPACELIFT_TOKEN ]]; then
+        spacectl profile login
+        export SPACELIFT_TOKEN=$(spacectl profile export-token)
+    fi
+    jets -stack-id=$1
+}

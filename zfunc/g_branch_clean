@@ -1,0 +1,6 @@
+branches=$(git branch | egrep -v "main|\*" | xargs)
+if [[ ! -z $branches ]]; then
+    git branch -d $branches
+else
+    echo "No branches to prune"
+fi

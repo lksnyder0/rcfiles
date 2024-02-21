@@ -139,6 +139,8 @@ FPATH=${HOME}/.rcfiles/zfunc:$FPATH
 autoload -Uz update_rcfiles
 autoload -Uz commit_rcfiles
 autoload -Uz avs
+autoload -Uz liftoff
+autoload -Uz g_branch_clean
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
