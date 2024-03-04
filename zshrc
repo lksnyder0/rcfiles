@@ -105,6 +105,7 @@ alias lah="ls -lah"
 alias incognito=" unset HISTFILE"
 alias cognito="set HISTFILE=~/.zsh_history"
 alias rex_ttt="ttt roll -port 443 https://ttt.stotlers.com rampart ${USERNAME}"
+alias rex_pr="gh pr create -a '@me' --reviewer 'huntresslabs/infra-devex'"
 
 for FILE in `find ~/.rcfiles/hostspecific/zsh -name "*.sh"`; do
     source $FILE
