@@ -10,6 +10,9 @@ return {
 			"RRethy/vim-illuminate",
 			"hrsh7th/cmp-nvim-lsp",
 			"lukas-reineke/lsp-format.nvim",
+			"utilyre/barbecue.nvim",
+			"SmiteshP/nvim-navic",
+			"nvim-tree/nvim-web-devicons",
 		},
 		config = function()
 			-- Set up Mason before anything else
@@ -37,6 +40,27 @@ return {
 
 			-- Turn on LSP status information
 			require("fidget").setup()
+
+			-- Barbecue Setup
+			vim.opt.updatetime = 200 -- triggers CursorHold event faster
+			require("barbecue").setup({
+				attach_navic = false, -- prevent barbecue from automatically attaching nvim-navic
+				create_autocmd = false,
+				show_modified = true,
+			})
+			vim.api.nvim_create_autocmd({
+				"WinResized", -- For nvim >0.9
+				"BufWinEnter",
+				"CursorHold",
+				"InsertLeave",
+				"BufModifiedSet", -- If show_modified is true
+			}, {
+				group = vim.api.nvim_create_augroup("barbecue.updater", {}),
+				callback = function()
+					require("barbecue.ui").update()
+				end,
+			})
+
 
 			-- Set up cool signs for diagnostics
 			local signs = { Error = " ", Warn = " ", Hint = " ", Info = " " }
@@ -90,6 +114,9 @@ return {
 				-- Attach and configure vim-illuminate
 				require("illuminate").on_attach(client)
 				require("lsp-format").on_attach(client, bufnr)
+				if client.server_capabilities.documentSymbolProvider then
+					require("nvim-navic").attach(client, bufnr)
+				end
 			end
 
 			-- nvim-cmp supports additional completion capabilities, so broadcast that to servers
@@ -98,12 +125,13 @@ return {
 
 			local default_lsp_config = {
 				"dockerls", -- Docker
-				-- "docker_compose_language_service",
+				"docker_compose_language_service",
 				"gopls", -- Go
 				"marksman", -- Markdown
 				"solargraph", -- Ruby
 				"terraformls", -- Terraform
 				"lemminx", -- XML
+				"jsonls", -- JSON
 			}
 			for _, v in ipairs(default_lsp_config) do
 				require("lspconfig")[v].setup({
@@ -119,10 +147,10 @@ return {
 			-- })
 
 			-- JSON
-			require("lspconfig")["jsonls"].setup({
-				on_attach = on_attach,
-				capabilities = capabilities,
-			})
+			-- require("lspconfig")["jsonls"].setup({
+			-- 	on_attach = on_attach,
+			-- 	capabilities = capabilities,
+			-- })
 
 			-- Markdown
 			-- require("lspconfig")["marksman"].setup({
