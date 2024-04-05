@@ -28,6 +28,7 @@ return {
 					"pylsp",
 					"solargraph",
 					"terraformls",
+					"yamlls",
 				},
 				automatic_installation = true,
 			})
@@ -132,6 +133,7 @@ return {
 				"terraformls", -- Terraform
 				"lemminx", -- XML
 				"jsonls", -- JSON
+				"yamlls", -- YAML
 			}
 			for _, v in ipairs(default_lsp_config) do
 				require("lspconfig")[v].setup({
