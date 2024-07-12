@@ -105,7 +105,9 @@ alias lah="ls -lah"
 alias incognito=" unset HISTFILE"
 alias cognito="set HISTFILE=~/.zsh_history"
 alias rex_ttt="ttt roll -port 443 https://ttt.stotlers.com rampart ${USERNAME}"
-alias rex_pr="gh pr create -a '@me' --reviewer 'huntresslabs/infra-devex'"
+alias rex_ttt2="ttt roll -port 443 https://ttt.stotlers.com rampart2 ${USERNAME}"
+alias rex_pr="gh pr create -a '@me' --reviewer 'huntresslabs/infra-devex' --draft"
+alias enter_the_matrix="cd ${HOME}/code && tmux"
 
 for FILE in `find ~/.rcfiles/hostspecific/zsh -name "*.sh"`; do
     source $FILE
