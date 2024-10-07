@@ -96,21 +96,22 @@ export EDITOR='nvim'
 # For a full list of active aliases, run `alias`.
 #
 # Example aliases
-alias config_zsh="$EDITOR ~/.zshrc"
-alias config_ohmyzsh="$EDITOR ~/.oh-my-zsh"
 alias config_nvim="$EDITOR ~/.config/nvim"
+alias config_ohmyzsh="$EDITOR ~/.oh-my-zsh"
+alias config_zsh="$EDITOR ~/.zshrc"
 
-alias reload_zsh="source ~/.zshrc"
-alias reload_p10k="p10k reload"
-alias lah="ls -lah"
-alias incognito=" unset HISTFILE"
 alias cognito="set HISTFILE=~/.zsh_history"
-alias rex_ttt="ttt roll -port 443 https://ttt.stotlers.com rampart ${USERNAME}"
+alias incognito=" unset HISTFILE"
+alias lah="ls -lah"
+alias reload_p10k="p10k reload"
+alias reload_zsh="source ~/.zshrc"
+alias rex_review="gh pr edit --add-reviewer huntresslabs/infra-devex"
 alias rex_ttt2="ttt roll -port 443 https://ttt.stotlers.com rampart2 ${USERNAME}"
-alias rex_review="gh pr edit --add-reviewer 'huntresslabs/infra-devex'"
+alias rex_ttt="ttt roll -port 443 https://ttt.stotlers.com rampart ${USERNAME}"
 
 alias pr_create="gh pr create -a '@me' --draft"
 alias pr_ready="gh pr ready"
+alias pr_view="gh pr view -w"
 
 alias enter_the_matrix="cd ${HOME}/code && tmux"
 
