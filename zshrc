@@ -96,24 +96,24 @@ export EDITOR='nvim'
 # For a full list of active aliases, run `alias`.
 #
 # Example aliases
-alias config_nvim="$EDITOR ~/.config/nvim"
-alias config_ohmyzsh="$EDITOR ~/.oh-my-zsh"
-alias config_zsh="$EDITOR ~/.zshrc"
+alias c_nvim="$EDITOR ~/.config/nvim"
+alias c_ohmyzsh="$EDITOR ~/.oh-my-zsh"
+alias c_zsh="$EDITOR ~/.zshrc"
 
 alias cognito="set HISTFILE=~/.zsh_history"
 alias incognito=" unset HISTFILE"
 alias lah="ls -lah"
-alias reload_p10k="p10k reload"
-alias reload_zsh="source ~/.zshrc"
-alias rex_review="gh pr edit --add-reviewer huntresslabs/infra-devex"
-alias rex_ttt2="ttt roll -port 443 https://ttt.stotlers.com rampart2 ${USERNAME}"
-alias rex_ttt="ttt roll -port 443 https://ttt.stotlers.com rampart ${USERNAME}"
+alias r_p10k="p10k reload"
+alias r_zsh="source ~/.zshrc"
+alias rt2="ttt roll -port 443 https://ttt.stotlers.com rampart2 ${USERNAME}"
+alias rt="ttt roll -port 443 https://ttt.stotlers.com rampart ${USERNAME}"
 
-alias pr_create="gh pr create -a '@me' --draft"
-alias pr_ready="gh pr ready"
-alias pr_view="gh pr view -w"
+alias prc="gh pr create -a '@me' --draft"
+alias prr="gh pr ready"
+alias prv="gh pr view -w"
+alias rr="gh pr edit --add-reviewer huntresslabs/infra-devex"
 
-alias enter_the_matrix="cd ${HOME}/code && tmux"
+alias neo="cd ${HOME}/code && tmux"
 
 for FILE in `find ~/.rcfiles/hostspecific/zsh -name "*.sh"`; do
     source $FILE
