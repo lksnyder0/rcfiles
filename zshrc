@@ -108,10 +108,12 @@ alias r_zsh="source ~/.zshrc"
 alias rt2="ttt roll -port 443 https://ttt.stotlers.com rampart2 ${USERNAME}"
 alias rt="ttt roll -port 443 https://ttt.stotlers.com rampart ${USERNAME}"
 
-alias prc="gh pr create -a '@me' --draft"
+alias prc="gh pr create -a '@me'"
+alias prcd="gh pr create -a '@me' --draft"
 alias prr="gh pr ready"
 alias prv="gh pr view -w"
-alias rr="gh pr edit --add-reviewer huntresslabs/infra-devex"
+alias prm="gh pr merge --auto"
+alias rr="gh pr edit --add-reviewer huntresslabs/idex"
 
 alias neo="cd ${HOME}/code && tmux"
 
