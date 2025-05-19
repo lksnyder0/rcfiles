@@ -1,5 +1,10 @@
-aws-vault 7.2.0
-ruby 2.7.7
-nodejs 16.18.1
+# Using Ruby
+ruby 3.4.3
+# Using NodeJs
+nodejs 22.7.0
+# Which Yarn
+yarn 1.22.19
+# Which Packer
 packer 1.8.4
-spacectl 0.30.0
+# AWS-Vault
+aws-vault 7.2.0

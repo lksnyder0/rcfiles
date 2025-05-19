@@ -108,8 +108,8 @@ alias incognito=" unset HISTFILE"
 alias lah="ls -lah"
 alias r_p10k="p10k reload"
 alias r_zsh="source ~/.zshrc"
-alias rt2="ttt roll -port 443 https://ttt.stotlers.com rampart2 ${USERNAME}"
-alias rt="ttt roll -port 443 https://ttt.stotlers.com rampart ${USERNAME}"
+alias rt2="ttt roll https://ttt.stotlers.com rampart2 ${USERNAME}"
+alias rt="ttt roll https://ttt.stotlers.com rampart ${USERNAME}"
 
 alias prc="gh pr create -a '@me'"
 alias prcd="gh pr create -a '@me' --draft"
@@ -143,9 +143,6 @@ export PATH="$HOME/.poetry/bin:$PATH"
 
 # export AWS_VAULT_BACKEND="file"
 export AWS_VAULT_BACKEND="secret-service"
-. "$HOME/.asdf/asdf.sh"
-# append completions to fpath
-fpath=(${ASDF_DIR}/completions $fpath)
 # initialise completions with ZSH's compinit
 autoload -Uz compinit && compinit
 

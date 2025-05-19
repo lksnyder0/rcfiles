@@ -25,7 +25,7 @@ return {
 					"jsonls",
 					"marksman",
 					"lua_ls",
-					"ruff_lsp",
+					"ruff",
 					"solargraph",
 					"terraformls",
 					"yamlls",
@@ -183,7 +183,7 @@ return {
 			})
 
 			-- Python
-			require('lspconfig').ruff_lsp.setup {
+			require('lspconfig').ruff.setup {
 				init_options = {
 					settings = {
 						args = {}
