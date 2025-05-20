@@ -15,10 +15,32 @@ local function get_if_available(name, opts)
 	return "default"
 end
 
+local neosolarized_opts = {
+	-- style = "light",
+	style = "dark",
+	transparent = false,
+	terminal_colors = false,
+	enable_italics = true,
+	styles = {
+		-- Style to be applied to different syntax groups
+		comments = { italic = true },
+		keywords = { italic = true },
+		functions = { bold = true },
+		variables = {},
+		string = { italic = true },
+		underline = true, -- true/false; for global underline
+		undercurl = true, -- true/false; for global undercurl
+	},
+	-- Add specific hightlight groups
+	on_highlights = function(highlights, colors)
+		-- highlights.Include.fg = colors.red -- Using `red` foreground for Includes
+	end,
+}
 -- Uncomment the colorscheme to use
 -- local colorscheme = get_if_available("catppuccin")
 -- local colorscheme = get_if_available('gruvbox')
 -- local colorscheme = get_if_available('rose-pine')
 -- local colorscheme = get_if_available('everforest')
 -- local colorscheme = get_if_available('melange')
--- return colorscheme
+local colorscheme = get_if_available("NeoSolarized", neosolarized_opts)
+return colorscheme

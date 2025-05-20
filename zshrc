@@ -156,3 +156,6 @@ autoload -Uz g_branch_clean
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 # [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+autoload -Uz compinit
+compinit
+source /Users/luke.snyder/.hunt-cli/autocomplete_zsh

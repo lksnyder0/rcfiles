@@ -16,5 +16,11 @@ return {
 
 	"sainnhe/everforest",
 
-	"savq/melange-nvim"
+	"savq/melange-nvim",
+	{
+		"Tsuzat/NeoSolarized.nvim",
+		lazy = false,
+		priority = 1000,
+		name = "NeoSolarized",
+	},
 }
