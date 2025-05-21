@@ -67,18 +67,19 @@ export ZSH_TMUX_AUTOSTART=false
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(
-  docker
-  tmux
-  zsh-navigation-tools
-  ssh-agent
+  alias-finder
   archlinux
-  zsh-interactive-cd
+  asdf
+  aws
+  docker
   git
   github
-  terraform
   gpg-agent
-  alias-finder
-  aws
+  ssh-agent
+  terraform
+  tmux
+  zsh-interactive-cd
+  zsh-navigation-tools
 )
 
 source $ZSH/oh-my-zsh.sh
@@ -88,8 +89,8 @@ source $ZSH/oh-my-zsh.sh
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:${HOME}/.local/bin:/usr/local/go/bin:${HOME}/go/bin"
 # export MANPATH="/usr/local/man:$MANPATH"
 
-# You may need to manually set your language environment
-# export LANG=en_US.UTF-8
+# Add ASDF shims to path
+export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
 
 export EDITOR='nvim'
 
@@ -142,7 +143,7 @@ export PIPENV_VENV_IN_PROJECT=1
 export PATH="$HOME/.poetry/bin:$PATH"
 
 # export AWS_VAULT_BACKEND="file"
-export AWS_VAULT_BACKEND="secret-service"
+export AWS_VAULT_BACKEND="keychain"
 # initialise completions with ZSH's compinit
 autoload -Uz compinit && compinit
 
