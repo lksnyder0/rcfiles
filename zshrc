@@ -75,6 +75,8 @@ plugins=(
   git
   github
   gpg-agent
+  kubectl
+  kubectx
   ssh-agent
   terraform
   tmux
@@ -86,11 +88,14 @@ source $ZSH/oh-my-zsh.sh
 
 # User configuration
 
-export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:${HOME}/.local/bin:/usr/local/go/bin:${HOME}/go/bin"
+export PATH="${HOME}/.local/bin:/usr/local/go/bin:${HOME}/go/bin:$PATH"
 # export MANPATH="/usr/local/man:$MANPATH"
 
 # Add ASDF shims to path
 export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
+
+# Add Brew Caskroom
+export PATH="/opt/homebrew/Caskroom:$PATH"
 
 export EDITOR='nvim'
 
@@ -109,8 +114,8 @@ alias incognito=" unset HISTFILE"
 alias lah="ls -lah"
 alias r_p10k="p10k reload"
 alias r_zsh="source ~/.zshrc"
-alias rt2="ttt roll https://ttt.stotlers.com rampart2 ${USERNAME}"
-alias rt="ttt roll https://ttt.stotlers.com rampart ${USERNAME}"
+alias rt="ttt roll https://ttt.stotlers.com rampart luke"
+alias rt2="ttt roll https://ttt.stotlers.com rampart2 luke"
 
 alias prc="gh pr create -a '@me'"
 alias prcd="gh pr create -a '@me' --draft"
@@ -121,6 +126,8 @@ alias prma="gh pr merge --auto"
 alias rr="gh pr edit --add-reviewer huntresslabs/idex"
 
 alias neo="cd ${HOME}/code && tmux"
+
+alias kubectl="kubecolor"
 
 for FILE in `find ~/.rcfiles/hostspecific/zsh -name "*.sh"`; do
     source $FILE
@@ -154,3 +161,10 @@ autoload -Uz commit_rcfiles
 autoload -Uz avs
 autoload -Uz liftoff
 autoload -Uz g_branch_clean
+
+## Custom Prompt Override
+# export PROMPT='╭─$(conda_prompt_info)%B%(!.%{%}.%{%})%n@%m%{%} %B%{%}%~ %{%}$(ruby_prompt_info)$(git_prompt_info)$(hg_prompt_info)$(virtualenv_prompt_info)$(aws_prompt_info)
+# ╰─%B%(!.#.$)%b '
+export RPROMPT="%F{green}$AWS_VAULT%f$RPROMPT"
+
+compdef kubecolor=kubectl
