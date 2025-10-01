@@ -17,6 +17,7 @@ return {
 		config = function()
 			-- Set up Mason before anything else
 			require("mason").setup()
+			-- vim.lsp.config("mason")
 			require("mason-lspconfig").setup({
 				ensure_installed = {
 					"dockerls",
@@ -136,32 +137,32 @@ return {
 				"yamlls", -- YAML
 			}
 			for _, v in ipairs(default_lsp_config) do
-				require("lspconfig")[v].setup({
+				vim.lsp.config(v, {
 					on_attach = on_attach,
 					capabilities = capabilities,
 				})
 			end
 
 			-- Go
-			-- require("lspconfig")["gopls"].setup({
+			-- vim.lsp.config("gopls", {
 			-- 	on_attach = on_attach,
 			-- 	capabilities = capabilities,
 			-- })
 
 			-- JSON
-			-- require("lspconfig")["jsonls"].setup({
+			-- vim.lsp.config("jsonls", {
 			-- 	on_attach = on_attach,
 			-- 	capabilities = capabilities,
 			-- })
 
 			-- Markdown
-			-- require("lspconfig")["marksman"].setup({
+			-- vim.lsp.config("marksman", {
 			-- 	on_attach = on_attach,
 			-- 	capabilities = capabilities,
 			-- })
 
 			-- Lua
-			require("lspconfig")["lua_ls"].setup({
+			vim.lsp.config("lua_ls", {
 				on_attach = on_attach,
 				capabilities = capabilities,
 				settings = {
@@ -183,7 +184,7 @@ return {
 			})
 
 			-- Python
-			require('lspconfig').ruff.setup {
+			vim.lsp.config("ruff", {
 				init_options = {
 					settings = {
 						args = {}
@@ -191,8 +192,8 @@ return {
 				},
 				capabilities = capabilities,
 				on_attach = on_attach,
-			}
-			-- require("lspconfig")["pylsp"].setup({
+			})
+			-- vim.lsp.config("pylsp", {
 			-- 	on_attach = on_attach,
 			-- 	capabilities = capabilities,
 			-- 	settings = {
@@ -222,13 +223,13 @@ return {
 			-- })
 
 			-- Ruby
-			-- require("lspconfig")["solargraph"].setup({
+			-- vim.lsp.config("solargraph", {
 			-- 	on_attach = on_attach,
 			-- 	capabilities = capabilities,
 			-- })
 
 			-- Terraform
-			-- require("lspconfig")["terraformls"].setup({
+			-- vim.lsp.config("terraformls", {
 			-- 	on_attach = on_attach,
 			-- 	capabilities = capabilities,
 			-- })
