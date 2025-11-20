@@ -28,19 +28,22 @@ return {
 					end, { expr = true })
 
 					-- Actions
-					map('n', '<leader>gh', gs.stage_hunk)
-					map('n', '<leader>gr', gs.reset_hunk)
-					map('v', '<leader>gh', function() gs.stage_hunk { vim.fn.line('.'), vim.fn.line('v') } end)
-					map('v', '<leader>gr', function() gs.reset_hunk { vim.fn.line('.'), vim.fn.line('v') } end)
-					map('n', '<leader>gs', gs.stage_buffer)
-					map('n', '<leader>gu', gs.undo_stage_hunk)
-					map('n', '<leader>gr', gs.reset_buffer)
-					map('n', '<leader>gp', gs.preview_hunk)
-					map('n', '<leader>gb', function() gs.blame_line { full = true } end)
-					map('n', '<leader>gb', gs.toggle_current_line_blame)
-					map('n', '<leader>gd', gs.diffthis)
-					map('n', '<leader>gD', function() gs.diffthis('~') end)
-					map('n', '<leader>td', gs.toggle_deleted)
+					map('n', '<leader>gh', gs.stage_hunk, { desc = "Stage hunk" })
+					map('n', '<leader>gr', gs.reset_hunk, { desc = "Reset hunk" })
+					map('v', '<leader>gh', function() gs.stage_hunk { vim.fn.line('.'), vim.fn.line('v') } end,
+						{ desc = "Stage highlighted hunk" })
+					map('v', '<leader>gr', function() gs.reset_hunk { vim.fn.line('.'), vim.fn.line('v') } end,
+						{ desc = "Reset highlighted hunk" })
+					map('n', '<leader>gs', gs.stage_buffer, { desc = "Stage buffer" })
+					map('n', '<leader>gu', gs.undo_stage_hunk, { desc = "Undo stage hunk" })
+					map('n', '<leader>gr', gs.reset_buffer, { desc = "Reset buffer" })
+					map('n', '<leader>gp', gs.preview_hunk, { desc = "Preview hunk" })
+					map('n', '<leader>gB', function() gs.blame_line { full = true } end,
+						{ desc = "Peak current line blame" })
+					map('n', '<leader>gtb', gs.toggle_current_line_blame, { desc = "Toggle current line blame" })
+					map('n', '<leader>gd', gs.diffthis, { desc = "Show diff" })
+					map('n', '<leader>gD', function() gs.diffthis('~') end, { desc = "Diff from ~" })
+					map('n', '<leader>gtd', gs.toggle_deleted, { desc = "Toggle deleted lines" })
 
 					-- Text object
 					map({ 'o', 'x' }, 'ih', ':<C-U>Gitsigns select_hunk<CR>')
@@ -50,25 +53,22 @@ return {
 	},
 	{
 		"akinsho/git-conflict.nvim",
-		commit = "2957f74",
-		config = function()
-			require("git-conflict").setup({
-				default_mappings = {
-					ours = "co",
-					theirs = "ct",
-					none = "c0",
-					both = "cb",
-					next = "cn",
-					prev = "cp",
-				},
-				highlights = { -- They must have background color, otherwise the default color will be used
-					incoming = 'DiffAdd',
-					current = 'DiffText',
-				},
-				debug = false,
-				disable_diagnostics = false
-			})
-		end,
+		opts = {
+			default_mappings = {
+				ours = "co",
+				theirs = "ct",
+				none = "c0",
+				both = "cb",
+				next = "cn",
+				prev = "cp",
+			},
+			highlights = { -- They must have background color, otherwise the default color will be used
+				incoming = 'DiffAdd',
+				current = 'DiffText',
+			},
+			debug = false,
+			disable_diagnostics = false
+		},
 	},
 	{
 		"tpope/vim-fugitive",

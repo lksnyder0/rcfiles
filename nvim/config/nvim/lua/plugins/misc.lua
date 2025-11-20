@@ -13,13 +13,13 @@ return {
 		end,
 	},
 	-- Better buffer closing actions. Available via the buffers helper.
-	{
-		"kazhala/close-buffers.nvim",
-		opts = {
-			preserve_window_layout = { "this", "nameless" },
-		},
-	},
+	-- {
+	-- 	"kazhala/close-buffers.nvim",
+	-- 	opts = {
+	-- 		preserve_window_layout = { "this", "nameless" },
+	-- 	},
+	-- },
 	"tpope/vim-sleuth", -- Detect tabstop and shiftwidth automatically
-	"tpope/vim-surround", -- Surround stuff with the ys-, cs-, ds- commands
-	"tpope/vim-dotenv", -- Load environment variables from .env files
+	-- "tpope/vim-surround", -- Surround stuff with the ys-, cs-, ds- commands
+	-- "tpope/vim-dotenv", -- Load environment variables from .env files
 }

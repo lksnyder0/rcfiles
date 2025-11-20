@@ -1,11 +1,11 @@
 return {
 	{
 		"mcauley-penney/tidy.nvim",
-		config = {
+		opts = {
 			filetype_exclude = { "markdown", "diff" }
 		},
 		init = function()
-			vim.keymap.set('n', "<leader>te", require("tidy").toggle, {})
+			vim.keymap.set('n', "<leader>te", require("tidy").toggle, { desc = "Toggle Tidy" })
 		end
 	},
 	{
