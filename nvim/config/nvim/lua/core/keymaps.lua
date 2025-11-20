@@ -1,8 +1,5 @@
 local map = require("helpers.keys").map
 
--- Clear default maps
-vim.keymap.set('n', 'g', '<nop>')
-
 -- Blazingly fast way out of insert mode
 map("i", "jk", "<esc>")
 
