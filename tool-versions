@@ -8,3 +8,4 @@ yarn 1.22.19
 packer 1.8.4
 # AWS-Vault
 aws-vault 7.2.0
+python 3.13.3
