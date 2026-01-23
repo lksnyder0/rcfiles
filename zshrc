@@ -1,10 +1,4 @@
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
-# Initialization code that may require console input (password prompts, [y/n]
-# confirmations, etc.) must go above this block; everything else may go below.
-# if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-#   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-# fi
-
+# zmodload zsh/zprof
 if (( ! ${fpath[(I)/usr/local/share/zsh/site-functions]}  )); then
       FPATH=/usr/local/share/zsh/site-functions:$FPATH
 fi
@@ -25,7 +19,7 @@ ZSH_THEME="bira"
 # CASE_SENSITIVE="true"
 
 # Uncomment the following line to disable bi-weekly auto-update checks.
-# DISABLE_AUTO_UPDATE="true"
+DISABLE_AUTO_UPDATE="true"
 
 # Uncomment the following line to change how often to auto-update (in days).
 # export UPDATE_ZSH_DAYS=13
@@ -37,7 +31,7 @@ ZSH_THEME="bira"
 # DISABLE_AUTO_TITLE="true"
 
 # Uncomment the following line to enable command auto-correction.
-# ENABLE_CORRECTION="true"
+ENABLE_CORRECTION="true"
 
 # Uncomment the following line to display red dots whilst waiting for completion.
 # COMPLETION_WAITING_DOTS="true"
@@ -51,7 +45,11 @@ COMPLETION_WAITING_DOTS="true"
 # Uncomment the following line if you want to change the command execution time
 # stamp shown in the history command output.
 # The optional three formats: "mm/dd/yyyy"|"dd.mm.yyyy"|"yyyy-mm-dd"
-HIST_STAMPS="mm/dd/yyyy"
+HIST_STAMPS="yyyy-mm-dd"
+
+# Speed up fixes
+DISABLE_MAGIC_FUNCTIONS="true"
+DISABLE_COMPFIX="true"
 
 # Would you like to use another custom folder than $ZSH/custom?
 # ZSH_CUSTOM=/path/to/new-custom-folder
@@ -114,7 +112,7 @@ alias incognito=" unset HISTFILE"
 alias lah="ls -lah"
 alias r_p10k="p10k reload"
 alias r_zsh="source ~/.zshrc"
-alias rt="ttt roll http://k8s-default-ttt-2bcca0d894-425882470.us-east-1.elb.amazonaws.com:80 rampart luke"
+alias rt="ttt roll https://ttt.idex.huntress.io rampart luke"
 
 alias prc="gh pr create -a '@me'"
 alias prcd="gh pr create -a '@me' --draft"
@@ -151,7 +149,15 @@ export PATH="$HOME/.poetry/bin:$PATH"
 # export AWS_VAULT_BACKEND="file"
 export AWS_VAULT_BACKEND="keychain"
 # initialise completions with ZSH's compinit
-autoload -Uz compinit && compinit
+autoload -Uz compinit
+# check if the .zcompdump file is from today; if not, regenerate it
+if [ "$(date +'%j')" != "$(stat -f '%Sm' -t '%j' ~/.zcompdump 2>/dev/null)" ]; then
+    echo "Regenerating zcompdump..."
+    compinit
+else
+    echo "Using existing zcompdump..."
+    compinit -C
+fi
 
 ## Add custom functions
 FPATH=${HOME}/.rcfiles/zfunc:$FPATH
@@ -167,3 +173,4 @@ autoload -Uz g_branch_clean
 export RPROMPT="%F{green}$AWS_VAULT%f$RPROMPT"
 
 compdef kubecolor=kubectl
+# zprof
