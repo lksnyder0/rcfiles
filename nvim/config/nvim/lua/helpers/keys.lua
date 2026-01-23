@@ -12,6 +12,15 @@ M.dap_map = function(mode, lhs, rhs, desc)
 	M.map(mode, lhs, rhs, desc)
 end
 
+M.ai_map = function(mode, lhs, rhs, desc)
+	vim.keymap.set(mode, lhs, rhs, {
+		silent = true,
+		expr = true,
+		replace_keycodes = false,
+		desc = desc
+	})
+end
+
 M.set_leader = function(key)
 	vim.g.mapleader = key
 	vim.g.maplocalleader = key

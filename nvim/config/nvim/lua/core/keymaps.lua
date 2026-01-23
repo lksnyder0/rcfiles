@@ -1,7 +1,8 @@
 local map = require("helpers.keys").map
+local ai_map = require("helpers.keys").ai_map
 
 -- Blazingly fast way out of insert mode
-map("i", "jk", "<esc>")
+-- map("i", "jk", "<esc>")
 
 -- Quick access to some common actions
 map("n", "<leader>fw", "<cmd>w<cr>", "Write")
@@ -60,6 +61,17 @@ end, "Toggle between light and dark themes")
 
 -- Clear after search
 map("n", "<leader>ur", "<cmd>nohl<cr>", "Clear highlights")
+
+-- AI Keymaps
+ai_map("i", "<C-l>", 'copilot#Accept("\\<CR>")', "Accept AI suggestion")
+vim.g.copilot_no_tab_map = true
+map("i", "<C-]>", "<Plug>(copilot-next)", "Next AI suggestion")
+-- map("i", "<C-[>", "<Plug>(copilot-previous)", "Previous AI suggestion")
+map("i", "<C-\\>", "<Plug>(copilot-dismiss)", "Dismiss AI suggestion")
+map("n", "<leader>ai", "<cmd>Copilot panel<cr>", "Open AI suggestions panel")
+map("n", "<leader>ad", "<cmd>Copilot disable<cr>", "Disable AI suggestions")
+map("n", "<leader>ae", "<cmd>Copilot enable<cr>", "Enable AI suggestions")
+
 
 -- # Comments
 -- ## Normal mode
