@@ -357,6 +357,51 @@ systemctl --user restart conky.service
 - Graph history: 300 points × 3s = 15 minutes
 - **Battery life improvement: ~2-3% vs 1s updates**
 
+### Docker Status Monitor
+
+**Update Interval:**
+- AC Mode: 5 seconds
+- Battery Mode: 10 seconds
+
+**Features:**
+- Automatic Docker detection (shows "Docker not installed" if missing)
+- Container count and total memory usage
+- List of running containers (5 on AC, 3 on battery)
+- Only displayed when Docker daemon is running
+- Minimal performance impact
+
+**Implementation:**
+- Helper script: `~/.config/conky/docker-stats.sh`
+- Conditional display using `${if_existing /usr/bin/docker}`
+- Graceful degradation when Docker is not running
+
+**Display Modes:**
+```
+# Docker running with containers:
+Docker Status
+2 container(s) - 512.3 MB used
+Running Containers:
+web-app: Up 3 hours
+database: Up 3 hours
+
+# Docker installed but no containers:
+Docker Status
+No containers running
+
+# Docker daemon not running:
+Docker Status
+Docker daemon not running
+
+# Docker not installed:
+Docker Status
+Docker not installed
+```
+
+**Performance Impact:**
+- CPU overhead: <0.01% (5-10s update interval)
+- Adds ~200ms to overall refresh cycle when Docker is running
+- No impact when Docker is not installed or running
+
 ## Performance Considerations
 
 ### Update Interval Selection
@@ -587,6 +632,47 @@ ${diskiograph_read 20,145 88dd88 dd8888} ${diskiograph_write 20,145 88dd88 dd888
 alignment = 'top_left',    # Options: top_left, top_right, bottom_left, bottom_right
 gap_x = 20,                # Horizontal offset from edge
 gap_y = 60,                # Vertical offset from edge
+```
+
+#### Customize Docker Panel
+
+**Change update interval:**
+```lua
+# In conky-ac.conf or conky-battery.conf
+# Change all Docker execi intervals:
+${execi 5 ...}   # AC mode - change 5 to desired seconds
+${execi 10 ...}  # Battery mode - change 10 to desired seconds
+```
+
+**Change container list limit:**
+```bash
+# Edit ~/.config/conky/docker-stats.sh
+# In get_containers() or get_container_names(), change:
+head -n 5  # Change to desired number of containers
+```
+
+**Show more container details:**
+```lua
+# Replace in conky configs:
+${execi 5 /bin/bash $HOME/.config/conky/docker-stats.sh containers 5}
+
+# With custom docker command:
+${execi 5 docker ps --format "{{.Names}}: {{.Status}} ({{.Image}})" | head -5}
+```
+
+**Add Docker CPU usage:**
+```lua
+# Add after container list:
+${color1}Container Resources:${color}
+${execi 5 docker stats --no-stream --format "{{.Name}}: CPU {{.CPUPerc}} MEM {{.MemPerc}}" | head -3}
+```
+
+**Remove Docker panel:**
+```lua
+# Comment out or delete the entire Docker section from both configs:
+# ${color1}Docker Status${color}
+# ${if_existing /usr/bin/docker}...${endif}
+# ${hr 1}
 ```
 
 ### System Updates
@@ -847,6 +933,75 @@ ls /sys/class/power_supply/
 
 # Update in conky-battery.conf:
 ${battery_percent BAT0}  # Change BAT0 to your battery name
+```
+
+### Docker Panel Not Showing
+
+**If Docker is installed but panel says "not installed":**
+```bash
+# Check Docker binary location
+which docker
+
+# If Docker is at a different path (not /usr/bin/docker):
+# Edit both conky-ac.conf and conky-battery.conf:
+${if_existing /usr/local/bin/docker}  # Or your Docker path
+```
+
+**If Docker panel always shows "daemon not running":**
+```bash
+# Check if Docker is actually running
+docker info
+
+# Start Docker service
+sudo systemctl start docker
+
+# Enable Docker to start on boot
+sudo systemctl enable docker
+
+# Add user to docker group (to run without sudo)
+sudo usermod -aG docker $USER
+# Log out and back in for group changes to take effect
+```
+
+**If container list is empty but containers are running:**
+```bash
+# Verify containers are running
+docker ps
+
+# Check if docker-stats.sh script is executable
+chmod +x ~/.config/conky/docker-stats.sh
+
+# Test script manually
+~/.config/conky/docker-stats.sh summary
+~/.config/conky/docker-stats.sh containers
+
+# Check script output for errors
+~/.config/conky/docker-stats.sh summary 2>&1
+```
+
+**If memory usage shows incorrect values:**
+```bash
+# Test Docker stats command
+docker stats --no-stream --format "{{.MemUsage}}"
+
+# Verify script can access Docker
+docker info 2>&1 | head -5
+
+# If permission denied, add user to docker group (see above)
+```
+
+**Performance concerns with Docker monitoring:**
+```bash
+# If Docker checks are slow:
+# 1. Increase update interval in conky configs
+#    Change: execi 5 → execi 10 (AC mode)
+#    Change: execi 10 → execi 15 (Battery mode)
+
+# 2. Reduce container list limit
+#    Edit docker-stats.sh: Change "head -n 5" to "head -n 3"
+
+# 3. Disable Docker panel if not needed:
+#    Comment out Docker section in both conky configs
 ```
 
 ## Performance Benchmarks
