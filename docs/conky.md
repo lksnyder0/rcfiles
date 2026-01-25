@@ -10,6 +10,282 @@ This project implements a dynamic Conky configuration that:
 - Uses systemd and udev for zero-overhead power state detection
 - Optimized for performance-focused Python developers and DevSecOps engineers
 
+## Installation
+
+### Automated Installation (Recommended)
+
+An automated installation script is provided in the `conky/` directory that handles service setup and power-aware configuration.
+
+**Prerequisites:**
+```bash
+# Install required packages
+sudo pacman -S conky lm_sensors nvidia-utils
+
+# Configure hardware sensors
+sudo sensors-detect --auto
+```
+
+**Run Installation Script:**
+```bash
+cd ~/.rcfiles/conky
+./install-conky.sh
+```
+
+**What the Script Does:**
+
+1. **Creates Power-Aware Wrapper** (`~/.config/conky/conky-power-aware.sh`)
+   - Detects AC adapter path automatically
+   - Selects appropriate config based on power state
+   - Made executable with proper permissions
+
+2. **Creates systemd User Service** (`~/.config/systemd/user/conky.service`)
+   - Auto-starts Conky on login
+   - Automatically restarts on failure
+   - 3-second restart delay to prevent restart storms
+
+3. **Creates udev Rule** (`/etc/udev/rules.d/99-conky-power.rules`)
+   - Monitors power supply subsystem events
+   - Automatically restarts Conky when AC state changes
+   - Zero CPU overhead (kernel event-driven)
+
+4. **Enables and Starts Service**
+   - Reloads systemd daemon
+   - Enables service for automatic startup
+   - Starts Conky immediately
+   - Verifies service is running
+
+**Post-Installation Verification:**
+```bash
+# Check service status
+systemctl --user status conky.service
+
+# View live logs
+journalctl --user -u conky.service -f
+
+# Test power switching (plug/unplug AC adapter)
+# Conky should restart automatically and show different update intervals
+```
+
+### Manual Installation
+
+If you prefer manual setup or need to customize the installation:
+
+**1. Ensure Configurations Exist:**
+
+The repository includes two pre-configured files:
+- `~/.rcfiles/conky/conky-ac.conf` - AC power mode (1s updates)
+- `~/.rcfiles/conky/conky-battery.conf` - Battery mode (3s updates)
+
+If using the rcfiles symlink setup, these are already available at:
+```bash
+~/.config/conky/conky-ac.conf
+~/.config/conky/conky-battery.conf
+```
+
+**2. Detect Your AC Adapter Path:**
+```bash
+# Find AC adapter
+find /sys/class/power_supply -name online
+
+# Common paths:
+# /sys/class/power_supply/AC/online
+# /sys/class/power_supply/AC0/online
+# /sys/class/power_supply/ACAD/online
+```
+
+**3. Create Wrapper Script:**
+
+Edit the `AC_PATH` variable in the install script or create manually:
+```bash
+nano ~/.config/conky/conky-power-aware.sh
+```
+
+Set the correct AC adapter path:
+```bash
+AC_PATH="/sys/class/power_supply/AC/online"  # Adjust as needed
+```
+
+Make executable:
+```bash
+chmod +x ~/.config/conky/conky-power-aware.sh
+```
+
+**4. Create systemd Service:**
+```bash
+mkdir -p ~/.config/systemd/user
+
+cat > ~/.config/systemd/user/conky.service << 'EOF'
+[Unit]
+Description=Conky System Monitor (Power-Aware)
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.config/conky/conky-power-aware.sh
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+EOF
+```
+
+**5. Create udev Rule:**
+```bash
+sudo tee /etc/udev/rules.d/99-conky-power.rules > /dev/null << 'EOF'
+SUBSYSTEM=="power_supply", ATTR{online}=="0", RUN+="/usr/bin/systemctl --user --machine=$env{USER}@.host restart conky.service"
+SUBSYSTEM=="power_supply", ATTR{online}=="1", RUN+="/usr/bin/systemctl --user --machine=$env{USER}@.host restart conky.service"
+EOF
+
+sudo udevadm control --reload-rules
+```
+
+**6. Enable and Start:**
+```bash
+systemctl --user daemon-reload
+systemctl --user enable conky.service
+systemctl --user start conky.service
+```
+
+**7. Verify:**
+```bash
+# Check if running
+systemctl --user is-active conky.service
+
+# Check process
+pgrep -x conky
+```
+
+### Customizing Before Installation
+
+If you want to customize the configurations before installing:
+
+**Edit AC Power Config:**
+```bash
+nano ~/.rcfiles/conky/conky-ac.conf
+
+# Common customizations:
+# - Change update_interval (default: 1.0)
+# - Adjust position (gap_x, gap_y)
+# - Modify colors (color1, color2, color3, color4)
+# - Add/remove monitoring sections
+```
+
+**Edit Battery Config:**
+```bash
+nano ~/.rcfiles/conky/conky-battery.conf
+
+# Common customizations:
+# - Change update_interval (default: 3.0)
+# - Adjust battery path if not BAT0
+# - Same customizations as AC config
+```
+
+**Edit Wrapper Script Variables:**
+```bash
+# Before running install script, edit:
+nano ~/.rcfiles/conky/install-conky.sh
+
+# Set custom paths:
+AC_PATH="/sys/class/power_supply/YOUR_AC_PATH/online"
+BATTERY_PATH="/sys/class/power_supply/YOUR_BATTERY"
+```
+
+### Testing Installation
+
+**Test Current Mode:**
+```bash
+# Check which config is active
+ps aux | grep conky | grep -oE 'conky-(ac|battery).conf'
+```
+
+**Test Power Switching:**
+```bash
+# Monitor udev events
+udevadm monitor --property --subsystem-match=power_supply
+
+# Plug/unplug AC adapter and verify:
+# 1. Events appear in udev monitor
+# 2. Conky restarts (check logs)
+# 3. Mode indicator changes (⚡ or 🔋)
+# 4. Update interval changes
+```
+
+**Test Manual Start:**
+```bash
+# Stop service
+systemctl --user stop conky.service
+
+# Run manually to see errors
+~/.config/conky/conky-power-aware.sh
+
+# Or test specific config
+conky -c ~/.config/conky/conky-ac.conf
+```
+
+### Useful Commands After Installation
+
+```bash
+# Check service status
+systemctl --user status conky.service
+
+# View logs (last 20 entries)
+journalctl --user -u conky.service -n 20
+
+# View live logs
+journalctl --user -u conky.service -f
+
+# Restart after config changes
+systemctl --user restart conky.service
+
+# Stop Conky
+systemctl --user stop conky.service
+
+# Disable autostart
+systemctl --user disable conky.service
+
+# Re-enable autostart
+systemctl --user enable conky.service
+```
+
+### Troubleshooting Installation
+
+**Conky Service Fails to Start:**
+```bash
+# Check detailed error logs
+journalctl --user -u conky.service -n 50
+
+# Common issues:
+# 1. AC_PATH incorrect → Edit wrapper script
+# 2. Config syntax error → Test with: conky -c ~/.config/conky/conky-ac.conf
+# 3. Missing dependencies → Install conky, lm_sensors, nvidia-utils
+```
+
+**Power Switching Doesn't Work:**
+```bash
+# Verify AC path exists
+cat /sys/class/power_supply/AC/online
+
+# Check udev rule is loaded
+sudo udevadm control --reload-rules
+
+# Test udev events
+udevadm monitor --property --subsystem-match=power_supply
+# Then plug/unplug AC
+```
+
+**Conky Not Visible on Screen:**
+```bash
+# Try different window types
+# Edit both conky-ac.conf and conky-battery.conf:
+own_window_type = 'override'  # Try this first
+# or
+own_window_type = 'normal'    # If override doesn't work
+
+# Restart service
+systemctl --user restart conky.service
+```
+
 ## Software Components
 
 ### Core Dependencies
