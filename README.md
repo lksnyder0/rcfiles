@@ -12,6 +12,7 @@ Personal dotfiles for Linux and macOS environments featuring Neovim, ZSH with oh
 | [ZSH](docs/zsh.md) | Shell configuration with oh-my-zsh framework |
 | [tmux](docs/tmux.md) | Terminal multiplexer with vim-style navigation |
 | [Conky](docs/conky.md) | System monitor for Linux desktops (power-aware) |
+| [AI Tools](docs/ai-tools.md) | Claude Code, Serena, Context7 for AI-powered development |
 
 ## Prerequisites
 
@@ -191,6 +192,29 @@ ln -sf ~/.rcfiles/conky ~/.config/conky
 - **Split vertical**: `C-a -`
 - **Pane navigation**: `C-a h/j/k/l`
 - **Reload config**: `C-a r`
+
+## AI Development Tools
+
+This repository includes configuration for AI-powered development tools:
+
+- **Claude Code**: CLI-based AI coding assistant
+- **MCP Servers**:
+  - **Serena**: Semantic code navigation, symbol search, and intelligent refactoring
+  - **Context7**: Real-time library documentation and code examples
+
+See [AI Tools Documentation](docs/ai-tools.md) for detailed setup and usage.
+
+### Deploying AI Configurations
+
+```bash
+# For personal machines
+./deploy-ai-configs.sh personal
+
+# For work machines (configs not committed to repo)
+./deploy-ai-configs.sh work
+```
+
+**Security Note**: AI configurations are protected with automated security scanning. See [SECURITY.md](SECURITY.md) for details.
 
 ## Documentation
 
