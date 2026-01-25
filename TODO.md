@@ -8,3 +8,4 @@ Help me write a todo list for this project. Consider each of the numbered points
 2. Add a macos install script based on the archlinux script.
   - Match the style and structure of this script.
 3. Update the test script to support both macos and archlinux.
+4. Add a panel to conky to show docker status. I want to know the amount of memory used by docker and a list of running docker containers. If docker it's running, omit this section.
