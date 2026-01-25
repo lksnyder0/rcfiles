@@ -58,7 +58,7 @@ nvim/config/nvim/
 | nvim-treesitter | Syntax parsing | C compiler (gcc/clang) |
 | mason.nvim | LSP installer | npm, python3, go |
 | copilot.vim | AI assistance | Node.js, GitHub account |
-| formatter.nvim | Code formatting | black, rubocop, gofmt, jq, stylua, terraform |
+| formatter.nvim | Code formatting | black, rubocop, gofmt, jq, stylua, opentofu |
 | vim-dadbod | Database UI | Database clients (psql, mysql, etc.) |
 
 ## Keybindings
@@ -285,7 +285,7 @@ Configured via formatter.nvim:
 | Lua | stylua | `stylua` |
 | Python | black | `black` |
 | Ruby | rubocop | `rubocop` |
-| Terraform | terraform fmt | `terraform` |
+| Terraform/OpenTofu | tofu fmt | `tofu` (opentofu) |
 | HCL | packer fmt | `packer` |
 | XML | xmlformatter | `xmlformatter` |
 | * | Remove trailing whitespace | Built-in |

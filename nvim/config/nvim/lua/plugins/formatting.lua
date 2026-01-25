@@ -32,11 +32,29 @@ return {
 						require("formatter.filetypes.ruby").rubocup
 					},
 					terraform = {
-						require("formatter.filetypes.terraform").terraformfmt
-					},
-					tf = {
-						require("formatter.filetypes.terraform").terraformfmt
-					},
+					function()
+						return {
+							exe = "tofu",
+							args = {
+								"fmt",
+								"-",
+							},
+							stdin = true,
+						}
+					end
+				},
+				tf = {
+					function()
+						return {
+							exe = "tofu",
+							args = {
+								"fmt",
+								"-",
+							},
+							stdin = true,
+						}
+					end
+				},
 					hcl = {
 						function()
 							return {

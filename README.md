@@ -29,7 +29,52 @@ git submodule init
 git submodule update
 ```
 
-### Install Dependencies
+### Automated Installation (Arch Linux)
+
+For Arch Linux users, an automated installation script is provided that handles all dependencies, symlinks, and configuration:
+
+```bash
+cd ~/.rcfiles
+./install-arch.sh
+```
+
+This script will:
+- Install all required packages (Neovim, ZSH, tmux, Conky, etc.)
+- Install all Neovim dependencies (ripgrep, fd, LSP servers, formatters)
+- Install development tools (kubectl, docker, gh, kubecolor, aws-vault)
+- Install version managers (asdf, nvm, rvm, poetry)
+- Install oh-my-zsh framework
+- Create all necessary symlinks
+- Initialize git submodules
+- Set ZSH as the default shell
+- Bootstrap Neovim plugins
+- Install tools from .tool-versions via asdf
+
+After running the script, restart your shell or run `source ~/.zshrc`.
+
+#### Verify Installation
+
+After installation, run the test script to verify everything is configured correctly:
+
+```bash
+cd ~/.rcfiles
+./test-environment.sh
+```
+
+This test script checks:
+- All core tools are installed (Neovim, ZSH, tmux, etc.)
+- Neovim dependencies (ripgrep, fd, LSP servers, formatters)
+- Development tools (kubectl, docker, gh, kubecolor)
+- Version managers (asdf, nvm, rvm, poetry)
+- Symlinks are correctly configured
+- Git submodules are initialized
+- ZSH configuration loads without errors
+- Neovim configuration is valid
+- tmux configuration is valid
+
+The script provides a detailed report with pass/fail status for each component.
+
+### Manual Installation
 
 #### Arch Linux
 
@@ -44,7 +89,7 @@ sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.
 sudo pacman -S ripgrep fd make gcc npm python go
 
 # LSP and formatter dependencies
-sudo pacman -S python-black stylua jq rubygems terraform
+sudo pacman -S python-black stylua jq rubygems opentofu
 
 # Optional: Ruby LSP
 sudo gem install solargraph
@@ -119,7 +164,9 @@ ln -sf ~/.rcfiles/conky ~/.config/conky
 ├── hostspecific/zsh/     # Machine-specific configs (ephemeral, not committed)
 ├── tool-versions         # asdf version definitions
 ├── cheatsheets/          # Git submodule with vim/tmux cheatsheets
-└── docs/                 # Tool-specific documentation
+├── docs/                 # Tool-specific documentation
+├── install-arch.sh       # Automated installation script for Arch Linux
+└── test-environment.sh   # Environment verification script
 ```
 
 ## Quick Reference
@@ -171,7 +218,7 @@ See the `docs/` directory for detailed documentation:
 | jq | formatter.nvim | `pacman -S jq` / `brew install jq` |
 | gofmt | formatter.nvim | Included with Go |
 | rubocop | formatter.nvim | `gem install rubocop` |
-| terraform | formatter.nvim | `pacman -S terraform` / `brew install terraform` |
+| opentofu | formatter.nvim | `pacman -S opentofu` / `brew install opentofu` |
 
 ### ZSH
 
