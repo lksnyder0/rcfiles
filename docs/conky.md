@@ -5,7 +5,7 @@ A highly optimized, power-aware system monitoring solution for Arch Linux laptop
 ## Overview
 
 This project implements a dynamic Conky configuration that:
-- Monitors CPU (24 cores), RAM, VRAM, and system temperatures
+- Monitors CPU (24 cores), RAM, VRAM, NVMe disk I/O, and system temperatures
 - Switches between 1-second (AC) and 3-second (battery) update intervals automatically
 - Uses systemd and udev for zero-overhead power state detection
 - Optimized for performance-focused Python developers and DevSecOps engineers
@@ -331,7 +331,9 @@ systemctl --user restart conky.service
 - Individual core percentages
 - Memory usage graph
 - NVIDIA VRAM monitoring
+- NVMe disk I/O monitoring (read/write stats with graphs)
 - System temperatures (Package, Core, GPU)
+- Docker container monitoring
 - Top 3 CPU-consuming processes
 - Power mode indicator: `⚡ AC POWER MODE (1s updates)`
 
@@ -345,7 +347,7 @@ systemctl --user restart conky.service
 **Update Interval:** 3 seconds
 
 **Features:**
-- All AC mode features
+- All AC mode features (CPU, Memory, VRAM, Disk I/O, Temperatures, Docker)
 - Battery percentage with bar graph
 - Estimated time remaining
 - Power mode indicator: `🔋 BATTERY MODE (3s updates)`
@@ -619,11 +621,50 @@ Down: ${downspeed eth0} ${alignr}Up: ${upspeed eth0}
 ${downspeedgraph eth0 20,145 88dd88 dd8888} ${upspeedgraph eth0 20,145 88dd88 dd8888}
 ```
 
-#### Add Disk I/O Monitoring
+#### Disk I/O Monitoring (Configured)
+
+**Current Implementation:**
+
+Both AC and battery configurations include NVMe disk I/O monitoring for the following drives:
+- **nvme0n1**: Samsung SSD 990 EVO Plus 2TB
+- **nvme1n1**: Micron MTFDKBA2T0QFM 2TB
+
+**Display Format:**
 ```lua
 ${color1}Disk I/O${color}
-Read: ${diskio_read} ${alignr}Write: ${diskio_write}
-${diskiograph_read 20,145 88dd88 dd8888} ${diskiograph_write 20,145 88dd88 dd8888}
+Samsung NVMe (nvme0n1)
+  Read: ${diskio_read nvme0n1}${alignr}Write: ${diskio_write nvme0n1}
+${diskiograph nvme0n1 40,300 88dd88 dd8888 -t}
+
+Micron NVMe (nvme1n1)
+  Read: ${diskio_read nvme1n1}${alignr}Write: ${diskio_write nvme1n1}
+${diskiograph nvme1n1 40,300 88dd88 dd8888 -t}
+```
+
+**Customization Options:**
+
+To monitor different drives:
+```bash
+# Find your disk devices
+ls -l /dev/disk/by-id/ | grep nvme
+
+# Update both conky-ac.conf and conky-battery.conf
+# Replace nvme0n1 and nvme1n1 with your device names
+```
+
+To monitor SATA drives instead:
+```lua
+${color1}Disk I/O${color}
+System Drive (sda)
+  Read: ${diskio_read sda}${alignr}Write: ${diskio_write sda}
+${diskiograph sda 40,300 88dd88 dd8888 -t}
+```
+
+To show only combined I/O (not separate read/write):
+```lua
+${color1}Disk I/O${color}
+Total: ${diskio nvme0n1}
+${diskiograph nvme0n1 40,300 88dd88 dd8888 -t}
 ```
 
 #### Change Position
