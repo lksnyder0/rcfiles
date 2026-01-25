@@ -328,6 +328,8 @@ test_dev_tools() {
 test_conky() {
     print_header "Testing Conky (Linux-only)"
     
+    print_subheader "Packages"
+    
     if command_exists conky; then
         test_pass "conky is installed: $(conky --version 2>&1 | head -n1)"
     else
@@ -340,6 +342,71 @@ test_conky() {
         print_info "Run 'sensors' to see detected hardware sensors"
     else
         test_warn "lm_sensors is NOT installed (optional)"
+    fi
+    
+    print_subheader "Configuration Files"
+    
+    # Check wrapper script
+    if [ -f "$HOME/.config/conky/conky-power-aware.sh" ]; then
+        if [ -x "$HOME/.config/conky/conky-power-aware.sh" ]; then
+            test_pass "Power-aware wrapper script exists and is executable"
+        else
+            test_warn "Power-aware wrapper script exists but is not executable"
+        fi
+    else
+        test_warn "Power-aware wrapper script not found (optional)"
+    fi
+    
+    # Check systemd service
+    if [ -f "$HOME/.config/systemd/user/conky.service" ]; then
+        test_pass "Systemd user service file exists"
+        
+        # Check if service is enabled
+        if systemctl --user is-enabled conky.service &>/dev/null; then
+            test_pass "Conky service is enabled"
+        else
+            test_warn "Conky service exists but is not enabled"
+        fi
+        
+        # Check if service is running
+        if systemctl --user is-active --quiet conky.service; then
+            test_pass "Conky service is running"
+        else
+            test_warn "Conky service is not running (start: systemctl --user start conky.service)"
+        fi
+    else
+        test_warn "Systemd service file not found (optional)"
+    fi
+    
+    print_subheader "System Integration"
+    
+    # Check udev rule
+    if [ -f "/etc/udev/rules.d/99-conky-power.rules" ]; then
+        test_pass "Udev power switching rule exists"
+    else
+        test_warn "Udev rule not found (optional - required for automatic power switching)"
+    fi
+    
+    # Check AC adapter detection
+    local AC_PATHS=(
+        "/sys/class/power_supply/AC/online"
+        "/sys/class/power_supply/AC0/online"
+        "/sys/class/power_supply/ACAD/online"
+        "/sys/class/power_supply/ADP0/online"
+        "/sys/class/power_supply/ADP1/online"
+    )
+    
+    local ac_found=false
+    for path in "${AC_PATHS[@]}"; do
+        if [ -f "$path" ]; then
+            test_pass "AC adapter detected at: $path"
+            ac_found=true
+            break
+        fi
+    done
+    
+    if [ "$ac_found" = false ]; then
+        test_warn "No AC adapter path detected (may be a desktop system)"
     fi
 }
 

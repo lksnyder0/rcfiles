@@ -226,6 +226,118 @@ install_conky() {
     # Detect sensors
     print_info "Detecting sensors (you may need to answer yes to some prompts)..."
     sudo sensors-detect --auto || print_warning "sensors-detect had issues, but continuing..."
+    
+    # Detect AC adapter path
+    print_info "Detecting AC adapter path..."
+    
+    local AC_PATH=""
+    local POSSIBLE_PATHS=(
+        "/sys/class/power_supply/AC/online"
+        "/sys/class/power_supply/AC0/online"
+        "/sys/class/power_supply/ACAD/online"
+        "/sys/class/power_supply/ADP0/online"
+        "/sys/class/power_supply/ADP1/online"
+    )
+    
+    for path in "${POSSIBLE_PATHS[@]}"; do
+        if [ -f "$path" ]; then
+            AC_PATH="$path"
+            print_success "Found AC adapter at: $AC_PATH"
+            break
+        fi
+    done
+    
+    if [ -z "$AC_PATH" ]; then
+        print_warning "Could not detect AC adapter path automatically"
+        AC_PATH="/sys/class/power_supply/AC/online"
+        print_warning "Using default: $AC_PATH"
+    fi
+    
+    # Create wrapper script
+    print_info "Creating power-aware wrapper script..."
+    
+    mkdir -p "$HOME/.config/conky"
+    
+    cat > "$HOME/.config/conky/conky-power-aware.sh" << WRAPPER_EOF
+#!/bin/bash
+
+# Detect AC adapter path
+AC_PATH="$AC_PATH"
+
+# Function to check if on AC power
+is_on_ac() {
+    if [ -f "\$AC_PATH" ]; then
+        [ "\$(cat "\$AC_PATH")" = "1" ]
+    else
+        # Default to AC if can't detect
+        true
+    fi
+}
+
+# Determine which config to use
+if is_on_ac; then
+    CONFIG="\$HOME/.config/conky/conky-ac.conf"
+else
+    CONFIG="\$HOME/.config/conky/conky-battery.conf"
+fi
+
+# Start conky with appropriate config
+exec /usr/bin/conky -c "\$CONFIG"
+WRAPPER_EOF
+    
+    chmod +x "$HOME/.config/conky/conky-power-aware.sh"
+    print_success "Wrapper script created and made executable"
+    
+    # Create systemd service
+    print_info "Creating systemd user service..."
+    
+    mkdir -p "$HOME/.config/systemd/user"
+    
+    cat > "$HOME/.config/systemd/user/conky.service" << 'SERVICE_EOF'
+[Unit]
+Description=Conky System Monitor (Power-Aware)
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.config/conky/conky-power-aware.sh
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+SERVICE_EOF
+    
+    print_success "Systemd service created"
+    
+    # Create udev rule
+    print_info "Creating udev rule for automatic power state switching..."
+    
+    sudo tee /etc/udev/rules.d/99-conky-power.rules > /dev/null << 'UDEV_EOF'
+# Restart conky when AC power state changes
+# This allows conky to switch between AC and battery configurations automatically
+SUBSYSTEM=="power_supply", ATTR{online}=="0", RUN+="/usr/bin/systemctl --user --machine=$env{USER}@.host restart conky.service"
+SUBSYSTEM=="power_supply", ATTR{online}=="1", RUN+="/usr/bin/systemctl --user --machine=$env{USER}@.host restart conky.service"
+UDEV_EOF
+    
+    sudo udevadm control --reload-rules
+    print_success "Udev rule created and reloaded"
+    
+    # Enable and start service
+    print_info "Enabling and starting conky service..."
+    
+    systemctl --user daemon-reload
+    systemctl --user enable conky.service
+    systemctl --user start conky.service
+    
+    # Verify installation
+    sleep 2
+    
+    if systemctl --user is-active --quiet conky.service; then
+        print_success "Conky service is running"
+    else
+        print_warning "Conky service failed to start. Check logs: journalctl --user -u conky.service"
+    fi
 }
 
 # Install oh-my-zsh
