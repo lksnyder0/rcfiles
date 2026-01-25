@@ -1,0 +1,118 @@
+# Pre-commit hooks configuration for rcfiles
+# Install: pip install pre-commit
+# Setup: pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Detect secrets in code
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: 
+          - '--baseline'
+          - '.secrets.baseline'
+        exclude: |
+          (?x)^(
+            package-lock.json|
+            yarn.lock|
+            .*\.lock
+          )$
+  
+  # Gitleaks - comprehensive secret scanning
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+  
+  # Custom AI config security check
+  - repo: local
+    hooks:
+      - id: check-ai-configs
+        name: Check AI configs for sensitive data
+        entry: ./scripts/check-ai-configs.sh
+        language: script
+        files: ^ai-configs/
+        pass_filenames: true
+  
+  # General code quality checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # Prevent committing large files
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      
+      # Check for files that would conflict in case-insensitive filesystems
+      - id: check-case-conflict
+      
+      # Check for merge conflicts
+      - id: check-merge-conflict
+      
+      # Check YAML syntax
+      - id: check-yaml
+        exclude: |
+          (?x)^(
+            \.github/.*|
+            \.claude/.*
+          )$
+      
+      # Check JSON syntax
+      - id: check-json
+      
+      # Detect private keys
+      - id: detect-private-key
+      
+      # Fix end of files
+      - id: end-of-file-fixer
+        exclude: |
+          (?x)^(
+            .*\.patch|
+            .*\.diff
+          )$
+      
+      # Trim trailing whitespace
+      - id: trailing-whitespace
+        exclude: |
+          (?x)^(
+            .*\.patch|
+            .*\.diff|
+            .*\.md
+          )$
+      
+      # Check for files that shouldn't be in Git
+      - id: check-symlinks
+      - id: destroyed-symlinks
+  
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        args: ['--severity=warning']
+        files: \.(sh|bash)$
+        exclude: |
+          (?x)^(
+            hostspecific/
+          )$
+  
+  # Lua formatting (for Neovim configs)
+  - repo: https://github.com/JohnnyMorganz/StyLua
+    rev: v0.19.1
+    hooks:
+      - id: stylua
+        files: \.lua$
+        exclude: |
+          (?x)^(
+            \.local/|
+            \.cache/
+          )$
+
+# Global exclusions
+exclude: |
+  (?x)^(
+    hostspecific/zsh/.*\.sh|
+    \.git/.*|
+    \.serena/.*|
+    cheatsheets/.*
+  )$

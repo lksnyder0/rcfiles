@@ -1,2 +1,26 @@
 *.swp
 hostspecific/zsh/*.sh
+
+# AI Configuration - Secrets and Sensitive Data
+# Allow only .example and README files, exclude everything else with sensitive data
+ai-configs/**/*.local.*
+ai-configs/**/*-secret*
+ai-configs/**/*-private*
+ai-configs/**/secrets/
+ai-configs/**/.env
+ai-configs/**/*.key
+ai-configs/**/*.pem
+ai-configs/**/*token*
+ai-configs/**/*credential*
+
+# Specific AI tool configs (real files) - use .example versions instead
+ai-configs/serena/config.yml
+ai-configs/context7/config.json
+
+# But explicitly allow example files and documentation
+!ai-configs/**/*.example.*
+!ai-configs/**/README.md
+!ai-configs/**/README.txt
+
+# Pre-commit / secret scanning
+.secrets.baseline
