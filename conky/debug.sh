@@ -14,11 +14,15 @@ is_on_ac() {
 }
 
 # Determine which config to use
+AC=$(cat $AC_PATH)
 if is_on_ac; then
+    echo "Use AC Config. is_on_ac: $AC"
     CONFIG="$HOME/.config/conky/conky-ac.conf"
 else
+    echo "Use BAT Config. is_on_ac: $AC"
     CONFIG="$HOME/.config/conky/conky-battery.conf"
 fi
 
 # Start conky with appropriate config
+# echo "nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader,nounits"
 exec /usr/bin/conky -c "$CONFIG"
