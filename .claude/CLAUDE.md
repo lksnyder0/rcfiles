@@ -169,3 +169,9 @@ When making changes to this repository, keep documentation in sync:
 2. Include descriptions for all aliases and keybindings
 3. Document external dependencies for plugins
 4. Mark work-specific configurations as examples
+5. Run the `activate_project` tool from serena before making any considerations about or edits to the project.
+6. Work in two distinct phases. Start in the PLANNING phase before moving to the EXECUTION phase.
+7. When in the PLANNING phase use the `switch_modes` tool to set the modes to `["planning", "one-shot", "no-onboarding"]`.
+8. When in the EXECUTION phase use the `switch_modes` tool to set the modes to `["editing", "interactive", "no-onboarding"]`.
+9. Review this list to ensure you're ready to work successfully.
+

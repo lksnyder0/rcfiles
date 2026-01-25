@@ -1,0 +1,3 @@
+ Help me write a todo list for this project. I still need to configure this project to install claude code and backup it's configuration here. When writing the todo make note about my wants for the task. I also want to ensure the        
+  global claude is stored for each unique host I use. I want to back that configuration up here but I do not want them to conflict with each other. I also want to update the cheatsheets module for each tool. Finally, I want to create     
+  a macos install script. Make an additional note tath I would like the existing test script to work for both macos and linux
