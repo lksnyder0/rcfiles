@@ -11,7 +11,7 @@ Personal dotfiles for Linux and macOS environments featuring Neovim, ZSH with oh
 | [Neovim](docs/neovim.md) | Primary editor with LSP, Treesitter, and modern plugins |
 | [ZSH](docs/zsh.md) | Shell configuration with oh-my-zsh framework |
 | [tmux](docs/tmux.md) | Terminal multiplexer with vim-style navigation |
-| [Conky](docs/conky.md) | System monitor for Linux desktops (power-aware) |
+| [Conky](docs/conky.md) | System monitor for Linux desktops (power-aware with network monitoring) |
 | [AI Tools](docs/ai-tools.md) | Claude Code, Serena, Context7 for AI-powered development |
 
 ## Prerequisites

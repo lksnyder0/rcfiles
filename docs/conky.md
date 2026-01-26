@@ -5,7 +5,9 @@ A highly optimized, power-aware system monitoring solution for Arch Linux laptop
 ## Overview
 
 This project implements a dynamic Conky configuration that:
-- Monitors CPU (24 cores), RAM, VRAM, NVMe disk I/O, and system temperatures
+- Monitors CPU (24 cores), RAM, VRAM, NVMe disk I/O, network, and system temperatures
+- Automatically detects and displays network information (wired/WiFi)
+- Shows network throughput graphs for active interface
 - Switches between 1-second (AC) and 3-second (battery) update intervals automatically
 - Uses systemd and udev for zero-overhead power state detection
 - Optimized for performance-focused Python developers and DevSecOps engineers
@@ -286,6 +288,41 @@ own_window_type = 'normal'    # If override doesn't work
 systemctl --user restart conky.service
 ```
 
+**Background Too Transparent or Too Opaque:**
+```lua
+# Edit both conky-ac.conf and conky-battery.conf
+# Adjust transparency value:
+own_window_argb_value = 128,  # Current: 50%
+
+# If background is too faint (hard to read):
+own_window_argb_value = 192,  # 75% opacity (more solid)
+own_window_argb_value = 220,  # 86% opacity (even more solid)
+
+# If background is too dark (covers wallpaper):
+own_window_argb_value = 96,   # 38% opacity (more transparent)
+own_window_argb_value = 64,   # 25% opacity (very transparent)
+
+# To remove background completely:
+own_window_transparent = true,
+own_window_argb_value = 0,
+
+# Restart to apply
+systemctl --user restart conky.service
+```
+
+**Border Too Thick or Thin:**
+```lua
+# Edit both config files
+border_width = 1,             # Current: 1px (subtle)
+border_inner_margin = 10,     # Padding inside border
+
+# Examples:
+border_width = 2,             # Thicker border
+border_width = 0,             # No border (with draw_borders = false)
+border_inner_margin = 15,     # More breathing room
+border_inner_margin = 5,      # Less padding
+```
+
 ## Software Components
 
 ### Core Dependencies
@@ -304,7 +341,10 @@ systemctl --user restart conky.service
 ~/.config/conky/
 ├── conky-ac.conf              # AC power configuration (1s updates)
 ├── conky-battery.conf         # Battery configuration (3s updates)
-└── conky-power-aware.sh       # Wrapper script for power detection
+├── conky-power-aware.sh       # Wrapper script for power detection
+├── network-info.sh            # Network interface detection and monitoring
+├── docker-stats.sh            # Docker container status monitoring
+└── gpu-mem-graph.sh           # NVIDIA GPU memory graph data
 
 ~/.config/systemd/user/
 └── conky.service              # Systemd user service
@@ -325,12 +365,21 @@ systemctl --user restart conky.service
 
 **Update Interval:** 1 second
 
+**Visual Appearance:**
+- Semi-transparent black background (30% opacity)
+- No border, 10px internal padding
+- 300px width, top-right alignment
+- White text with color-coded headers and values
+
 **Features:**
 - Real-time CPU monitoring across 24 cores
 - CPU usage graph (5 minutes history)
 - Individual core percentages
 - Memory usage graph
 - NVIDIA VRAM monitoring
+- Network monitoring (IP, netmask, connection type)
+- Network throughput graphs (download/upload)
+- WiFi signal strength and SSID (when applicable)
 - NVMe disk I/O monitoring (read/write stats with graphs)
 - System temperatures (Package, Core, GPU)
 - Docker container monitoring
@@ -346,8 +395,14 @@ systemctl --user restart conky.service
 
 **Update Interval:** 3 seconds
 
+**Visual Appearance:**
+- Semi-transparent black background (30% opacity)
+- No border, 10px internal padding
+- 300px width, top-right alignment
+- White text with color-coded headers and values
+
 **Features:**
-- All AC mode features (CPU, Memory, VRAM, Disk I/O, Temperatures, Docker)
+- All AC mode features (CPU, Memory, VRAM, Network, Disk I/O, Temperatures, Docker)
 - Battery percentage with bar graph
 - Estimated time remaining
 - Power mode indicator: `🔋 BATTERY MODE (3s updates)`
@@ -376,6 +431,45 @@ systemctl --user restart conky.service
 - Helper script: `~/.config/conky/docker-stats.sh`
 - Conditional display using `${if_existing /usr/bin/docker}`
 - Graceful degradation when Docker is not running
+
+### Network Information Monitor
+
+**Update Interval:**
+- AC Mode: 3 seconds
+- Battery Mode: 6 seconds
+
+**Features:**
+- Automatic interface detection (prioritizes default route)
+- Connection type identification (Wired/WiFi)
+- IP address and CIDR netmask display
+- WiFi SSID and signal quality (when wireless)
+- Real-time throughput graphs (download and upload)
+- Cumulative data transfer counters
+- Automatic switching when network changes
+
+**Implementation:**
+- Helper script: `~/.config/conky/network-info.sh`
+- Interface detection via `ip route` command
+- Wireless detection using `/sys/class/net/*/wireless`
+- WiFi information from `iwgetid` and `/proc/net/wireless`
+
+**Supported Operations:**
+```bash
+# Test network info script manually:
+~/.config/conky/network-info.sh interface  # Get active interface name
+~/.config/conky/network-info.sh type       # Connection type (Wired/WiFi)
+~/.config/conky/network-info.sh ip         # IP address
+~/.config/conky/network-info.sh netmask    # CIDR netmask
+~/.config/conky/network-info.sh ssid       # WiFi SSID (if wireless)
+~/.config/conky/network-info.sh signal     # WiFi signal quality
+~/.config/conky/network-info.sh status     # Full status summary
+```
+
+**Display Behavior:**
+- Shows "No Connection" when no network is active
+- Hides WiFi fields (SSID/Signal) on wired connections
+- Graphs automatically track the active interface
+- Adapts when switching between wired and wireless
 
 **Display Modes:**
 ```
@@ -613,12 +707,81 @@ ${cpugraph cpu0 40,300 00ff00 ff0000 -t}  # Green to red
 #                      low    high
 ```
 
-#### Add Network Monitoring
+#### Network Monitoring (Configured)
+
+**Current Implementation:**
+
+Both AC and battery configurations include automatic network monitoring with the following features:
+- Auto-detection of active network interface (wired or WiFi)
+- IP address and netmask display
+- Connection type identification
+- WiFi SSID and signal strength (when on wireless)
+- Network throughput graphs (download and upload)
+- Total data transfer counters
+
+**Display Format:**
 ```lua
-# In conky.text section, add:
 ${color1}Network${color}
+Type: WiFi (wlan0)
+IP: 192.168.1.100
+Netmask: /24
+SSID: MyNetwork
+Signal: 75%
+
+${color1}Network Throughput (wlan0)${color}
+Down: 1.2 MB/s        Up: 256 KB/s
+[Download Graph]      [Upload Graph]
+Total: 2.3 GB         Total: 512 MB
+```
+
+**Implementation Note:**
+The throughput graphs use Conky's `${if_up}` conditionals to detect which interface is active. The configuration includes checks for common interface names:
+- `wlan0` - Wireless interface
+- `eth0` - Ethernet interface  
+- `enp0s31f6` - Modern systemd-style ethernet naming
+
+Only the active interface's graph will be displayed.
+
+**Helper Script:**
+- `~/.config/conky/network-info.sh` - Detects active interface and connection type
+- Automatically switches between wired and wireless interfaces
+- Updates every 3 seconds (AC mode) or 6 seconds (battery mode)
+
+**Customization:**
+
+To add support for a different interface name:
+```lua
+# Edit both conky-ac.conf and conky-battery.conf
+# Add a new ${if_up} block for your interface (e.g., wlp2s0):
+${if_up wlp2s0}${color1}Network Throughput (wlp2s0)${color}
+Down: ${downspeed wlp2s0} ${alignr}Up: ${upspeed wlp2s0}
+${downspeedgraph wlp2s0 40,145 88dd88 dd8888 -t} ${upspeedgraph wlp2s0 40,145 88dd88 dd8888 -t}
+Total: ${totaldown wlp2s0} ${alignr}Total: ${totalup wlp2s0}${endif}
+```
+
+To monitor only one specific interface:
+```lua
+# Remove all ${if_up} blocks and replace with single hardcoded interface:
+${color1}Network Throughput (eth0)${color}
 Down: ${downspeed eth0} ${alignr}Up: ${upspeed eth0}
-${downspeedgraph eth0 20,145 88dd88 dd8888} ${upspeedgraph eth0 20,145 88dd88 dd8888}
+${downspeedgraph eth0 40,145 88dd88 dd8888 -t} ${upspeedgraph eth0 40,145 88dd88 dd8888 -t}
+Total: ${totaldown eth0} ${alignr}Total: ${totalup eth0}
+```
+
+To disable WiFi-specific information (SSID/Signal):
+```lua
+# Edit both config files and remove these lines:
+SSID: ${execi 3 /bin/bash $HOME/.config/conky/network-info.sh ssid}
+Signal: ${execi 3 /bin/bash $HOME/.config/conky/network-info.sh signal}
+```
+
+To identify your interface name:
+```bash
+# List all network interfaces
+ip link show
+
+# Or check which interface has the default route
+ip route | grep '^default' | awk '{print $5}'
 ```
 
 #### Disk I/O Monitoring (Configured)
@@ -632,14 +795,18 @@ Both AC and battery configurations include NVMe disk I/O monitoring for the foll
 **Display Format:**
 ```lua
 ${color1}Disk I/O${color}
-Samsung NVMe (nvme0n1)
-  Read: ${diskio_read nvme0n1}${alignr}Write: ${diskio_write nvme0n1}
-${diskiograph nvme0n1 40,300 88dd88 dd8888 -t}
+Samsung (nvme0n1): R 2.1 MB/s       W 1.5 MB/s
+[Read Graph 145px]   [Write Graph 145px]
 
-Micron NVMe (nvme1n1)
-  Read: ${diskio_read nvme1n1}${alignr}Write: ${diskio_write nvme1n1}
-${diskiograph nvme1n1 40,300 88dd88 dd8888 -t}
+Micron (nvme1n1): R 512 KB/s        W 256 KB/s
+[Read Graph 145px]   [Write Graph 145px]
 ```
+
+**Space-Saving Design:**
+- Side-by-side read/write graphs (40px height, 145px width each)
+- Compact disk naming (shortened from "Samsung NVMe" to "Samsung")
+- Read/Write abbreviated to "R" and "W"
+- Reduces vertical space by ~50% compared to stacked graphs
 
 **Customization Options:**
 
@@ -660,11 +827,27 @@ System Drive (sda)
 ${diskiograph sda 40,300 88dd88 dd8888 -t}
 ```
 
-To show only combined I/O (not separate read/write):
+To show combined I/O graph (single graph instead of split read/write):
 ```lua
 ${color1}Disk I/O${color}
-Total: ${diskio nvme0n1}
+Samsung (nvme0n1): ${diskio nvme0n1}
 ${diskiograph nvme0n1 40,300 88dd88 dd8888 -t}
+
+Micron (nvme1n1): ${diskio nvme1n1}
+${diskiograph nvme1n1 40,300 88dd88 dd8888 -t}
+```
+
+To show only read or only write graphs:
+```lua
+# Read-only graphs
+${color1}Disk Reads${color}
+Samsung: ${diskio_read nvme0n1} ${alignr}Micron: ${diskio_read nvme1n1}
+${diskiograph_read nvme0n1 40,145 88dd88 dd8888 -t} ${diskiograph_read nvme1n1 40,145 88dd88 dd8888 -t}
+
+# Write-only graphs
+${color1}Disk Writes${color}
+Samsung: ${diskio_write nvme0n1} ${alignr}Micron: ${diskio_write nvme1n1}
+${diskiograph_write nvme0n1 40,145 88dd88 dd8888 -t} ${diskiograph_write nvme1n1 40,145 88dd88 dd8888 -t}
 ```
 
 #### Change Position
@@ -673,6 +856,41 @@ ${diskiograph nvme0n1 40,300 88dd88 dd8888 -t}
 alignment = 'top_left',    # Options: top_left, top_right, bottom_left, bottom_right
 gap_x = 20,                # Horizontal offset from edge
 gap_y = 60,                # Vertical offset from edge
+```
+
+#### Adjust Background Transparency
+```lua
+# In conky.config section
+own_window_argb_value = 77,  # Current: 30% opacity
+# Values: 0 (fully transparent) to 255 (fully opaque)
+# Examples:
+#   0   = Fully transparent (no background)
+#   64  = 25% opacity (very transparent)
+#   77  = 30% opacity (current, subtle background)
+#   128 = 50% opacity (good readability)
+#   192 = 75% opacity (more solid)
+#   255 = 100% opacity (fully opaque)
+
+own_window_colour = '000000',  # Background color (hex)
+# Examples:
+#   '000000' = Black (current)
+#   '202020' = Dark gray
+#   '1a1a1a' = Very dark gray
+#   '2b2b2b' = Medium dark gray
+```
+
+#### Adjust Border and Padding
+```lua
+# In conky.config section
+draw_borders = true,           # Enable/disable border
+border_width = 1,              # Border thickness in pixels
+border_inner_margin = 10,      # Padding inside border (breathing room)
+border_outer_margin = 5,       # Margin outside border (from screen edge)
+
+# To remove borders completely:
+draw_borders = false,
+border_inner_margin = 0,
+border_outer_margin = 0,
 ```
 
 #### Customize Docker Panel
@@ -1043,6 +1261,71 @@ docker info 2>&1 | head -5
 
 # 3. Disable Docker panel if not needed:
 #    Comment out Docker section in both conky configs
+```
+
+### Network Panel Not Showing or Incorrect
+
+**If network panel shows "No Connection" but network works:**
+```bash
+# Check if default route exists
+ip route | grep '^default'
+
+# Test network-info.sh script
+~/.config/conky/network-info.sh interface
+~/.config/conky/network-info.sh type
+
+# Verify script is executable
+chmod +x ~/.config/conky/network-info.sh
+
+# Check for errors
+~/.config/conky/network-info.sh status 2>&1
+```
+
+**If WiFi information (SSID/Signal) not showing:**
+```bash
+# Verify wireless-tools is installed
+sudo pacman -S wireless_tools
+
+# Test iwgetid command
+iwgetid -r
+
+# Check if interface is wireless
+ls -l /sys/class/net/*/wireless
+
+# Manually test WiFi detection
+~/.config/conky/network-info.sh ssid
+~/.config/conky/network-info.sh signal
+```
+
+**If throughput graphs not updating:**
+```bash
+# Verify Conky can access network stats
+cat /proc/net/dev
+
+# Check if interface name is correct
+ip link show
+
+# Test Conky network variables manually
+conky -c <(echo "conky.text = [[\${downspeed \$(ip route | grep '^default' | awk '{print \$5}' | head -1)}]]")
+```
+
+**If wrong interface is monitored:**
+```bash
+# Check which interface has default route
+ip route | grep '^default'
+
+# To force a specific interface, edit both configs:
+# Replace all instances of:
+${execi 3 /bin/bash $HOME/.config/conky/network-info.sh interface}
+# With your interface name directly:
+eth0  # or wlan0, enp0s31f6, etc.
+```
+
+**If network info updates too slowly:**
+```bash
+# Reduce execi interval in both configs (trade-off: higher CPU usage)
+# AC mode: Change execi 3 → execi 1
+# Battery mode: Change execi 6 → execi 3
 ```
 
 ## Performance Benchmarks

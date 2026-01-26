@@ -1,0 +1,27 @@
+# vLLM Server Configuration Example
+# Use with: python serve_vllm_model.py --config config.yaml
+
+# Model configuration
+model: "meta-llama/Llama-3.1-8B-Instruct"
+
+# Server configuration
+host: "127.0.0.1"
+port: 8000
+api-key: "your-api-key-here"  # Optional, remove if not needed
+
+# Model parameters
+dtype: "auto"
+max-model-len: 8192
+max-num-batched-tokens: 8192
+max-num-seqs: 128
+trust-remote-code: true
+
+# Performance tuning
+tensor-parallel-size: 1
+gpu-memory-utilization: 0.9
+# kv-cache-dtype: "fp8"  # Uncomment to enable KV cache quantization
+# quantization: "awq"     # Uncomment to enable model quantization
+
+# Logging
+uvicorn-log-level: "info"
+# served-model-name: "llama-3.1-8b"  # Optional custom model name
