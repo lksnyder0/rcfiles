@@ -10,7 +10,7 @@ return {
 			"nvim-treesitter/nvim-treesitter-context",
 		},
 		config = function()
-			require("nvim-treesitter.config").setup({
+			require("nvim-treesitter").setup({
 				-- Add languages to be installed here that you want installed for treesitter
 				ensure_installed = {
 					"go",
