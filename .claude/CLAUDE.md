@@ -1,23 +1,54 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # rcfiles - Dotfiles Repository
 
 Personal dotfiles for Linux and macOS environments.
 
-**Repository**: https://gitlab.com/lksnyder0/rcfiles
+## Repository
+
+https://github.com/lksnyder0/rcfiles
+
+## Common Commands
+
+```bash
+# Verify environment after installation
+./test-environment.sh
+
+# Install everything on Arch Linux
+./install-arch.sh
+
+# Deploy AI tool configs (Claude global CLAUDE.md, Serena)
+./deploy-ai-configs.sh personal   # personal machine
+./deploy-ai-configs.sh work       # work machine (configs not committed)
+
+# Scan AI configs for secrets/sensitive data
+./scripts/check-ai-configs.sh
+
+# Check git security setup
+./scripts/setup-security-tools.sh
+```
 
 ## Project Structure
 
 ```
 .rcfiles/
-├── nvim/                 # Neovim configuration (primary editor)
-│   └── config/nvim/      # Symlinked to ~/.config/nvim
-├── zshrc                 # ZSH configuration (oh-my-zsh)
+├── nvim/config/nvim/     # Neovim config (symlinked to ~/.config/nvim)
+│   └── lua/plugins/      # lazy.nvim plugin specs (one file per plugin group)
+├── zshrc                 # ZSH config (oh-my-zsh + bira theme)
 ├── zfunc/                # Custom ZSH functions (autoloaded)
-├── tmux.conf             # Tmux configuration
-├── conky/                # Conky configs (Linux-only)
-├── hostspecific/zsh/     # Machine-specific configs (ephemeral, not committed)
-├── tool-versions         # asdf version definitions
-├── cheatsheets/          # Git submodule with vim/tmux cheatsheets
-└── docs/                 # Tool-specific documentation
+├── tmux.conf             # Tmux config
+├── conky/                # Conky configs (Linux-only, power-aware)
+├── ai-configs/           # AI tool configs (Claude, Serena, Context7)
+│   ├── claude/           # CLAUDE-personal.md / CLAUDE-work.md
+│   └── serena/           # serena_config.yml.example
+├── scripts/              # Security and setup utility scripts
+├── hostspecific/zsh/     # Machine-specific ZSH (ephemeral, NOT committed)
+├── docs/                 # Per-tool documentation
+├── deploy-ai-configs.sh  # Deploys AI configs to global locations (~/.claude/, ~/.serena/)
+├── install-arch.sh       # Full automated install for Arch Linux
+└── test-environment.sh   # Post-install environment verification
 ```
 
 ## Deployment
@@ -29,14 +60,15 @@ Configs are deployed via symlinks:
 - `~/.tool-versions` -> `~/.rcfiles/tool-versions`
 - `~/.config/conky/` -> `~/.rcfiles/conky/` (Linux only)
 
+AI configs are deployed differently - `deploy-ai-configs.sh` symlinks `ai-configs/claude/CLAUDE-personal.md` (or `-work.md`) to `~/.claude/CLAUDE.md`.
+
 ---
 
 ## Neovim Configuration
 
 ### Plugin Manager
-- **lazy.nvim** - Plugins auto-bootstrap on first launch
+- **lazy.nvim** - auto-bootstraps on first launch
 - Leader key: `<Space>`
-- Access lazy.nvim UI: `<leader>L`
 
 ### Plugin Structure
 Each file in `nvim/config/nvim/lua/plugins/` is a lazy.nvim plugin spec:
@@ -61,9 +93,6 @@ Each file in `nvim/config/nvim/lua/plugins/` is a lazy.nvim plugin spec:
 ### LSP Servers (via Mason)
 Automatically installed: `dockerls`, `gopls`, `jsonls`, `marksman`, `lua_ls`, `ruff`, `solargraph`, `terraformls`, `yamlls`
 
-### Treesitter Languages
-Ensured: go, lua, python, vim, ruby, terraform, dockerfile, git_config, git_rebase, gitattributes, gitcommit, gitignore, json, make, markdown_inline
-
 ### Formatters
 | Language | Formatter |
 |----------|-----------|
@@ -84,14 +113,11 @@ Ensured: go, lua, python, vim, ruby, terraform, dockerfile, git_config, git_reba
 
 ## ZSH Configuration
 
-### Framework & Theme
-- **oh-my-zsh** with **bira** theme
-- Completion waiting dots enabled
+- **Framework**: oh-my-zsh with **bira** theme
+- **Functions** (`zfunc/`): autoloaded via `autoload -Uz` in zshrc
+- **Host-specific**: `hostspecific/zsh/*.sh` sourced automatically - **do NOT commit these files**
 
-### oh-my-zsh Plugins
-alias-finder, archlinux, asdf, aws, docker, git, github, gpg-agent, kubectl, kubectx, ssh-agent, terraform, tmux, zsh-interactive-cd, zsh-navigation-tools
-
-### Custom Functions (zfunc/)
+### Custom Functions
 | Function | Purpose |
 |----------|---------|
 | `avs` | aws-vault exec wrapper: `avs <profile> <command>` |
@@ -99,8 +125,6 @@ alias-finder, archlinux, asdf, aws, docker, git, github, gpg-agent, kubectl, kub
 | `update_rcfiles` | Pull latest rcfiles |
 | `commit_rcfiles` | Commit rcfiles changes |
 | `g_branch_clean` | Clean up git branches |
-
-Functions are autoloaded via `autoload -Uz <function_name>` in zshrc.
 
 ### Key Aliases
 - `c_nvim`, `c_zsh` - Edit configs
@@ -118,60 +142,26 @@ Functions are autoloaded via `autoload -Uz <function_name>` in zshrc.
 - Split: `|` (horizontal), `-` (vertical)
 - New named window: `C-a C`
 - Reload config: `C-a r`
-- Solarized-inspired color scheme
-- Status bar shows: hostname, kernel, uptime, time/date
-
----
-
-## Conky (Linux-only)
-
-Power-aware configuration:
-- `conky-ac.conf` - Used when on AC power
-- `conky-battery.conf` - Used when on battery
-- `conky-power-aware.sh` - Launcher that selects appropriate config
-
----
-
-## asdf Tool Versions
-
-Managed versions (in `tool-versions`):
-- ruby, nodejs, yarn, packer, aws-vault, python
-
----
-
-## Host-Specific Configuration
-
-Machine-specific ZSH configs are placed in `hostspecific/zsh/*.sh` and sourced automatically. These files are **ephemeral** and should NOT be committed.
 
 ---
 
 ## Documentation Maintenance
 
-When making changes to this repository, keep documentation in sync:
+When making changes, keep docs in sync:
 
-### Update Triggers
-- **Adding/modifying aliases** → Update `docs/zsh.md`
-- **Adding/modifying keybindings** → Update relevant doc (`docs/neovim.md`, `docs/tmux.md`)
-- **Adding/removing plugins** → Update plugin tables in relevant docs
-- **Adding new zfunc functions** → Update `docs/zsh.md`
-- **Changing LSP servers or formatters** → Update `docs/neovim.md`
-- **Conky configuration changes** → Update `docs/conky.md`
+| Change | Update |
+|--------|--------|
+| Aliases / ZSH functions | `docs/zsh.md` |
+| Neovim keybindings, LSP, formatters | `docs/neovim.md` |
+| Tmux keybindings | `docs/tmux.md` |
+| Conky configuration | `docs/conky.md` |
+| AI tool configs | `docs/ai-tools.md` |
 
-### Documentation Structure
-- `README.md` - Primary entry point, installation instructions
-- `docs/zsh.md` - ZSH configuration details
-- `docs/neovim.md` - Neovim configuration details
-- `docs/tmux.md` - Tmux configuration details
-- `docs/conky.md` - Conky configuration details (Linux-only)
+---
 
-### Guidelines
-1. Follow existing documentation patterns and table formats
-2. Include descriptions for all aliases and keybindings
-3. Document external dependencies for plugins
-4. Mark work-specific configurations as examples
-5. Run the `activate_project` tool from serena before making any considerations about or edits to the project.
-6. Work in two distinct phases. Start in the PLANNING phase before moving to the EXECUTION phase.
-7. When in the PLANNING phase use the `switch_modes` tool to set the modes to `["planning", "one-shot", "no-onboarding"]`.
-8. When in the EXECUTION phase use the `switch_modes` tool to set the modes to `["editing", "interactive", "no-onboarding"]`.
-9. Review this list to ensure you're ready to work successfully.
+## AI Agent Workflow (Serena)
 
+1. Run the `activate_project` tool from Serena before making any edits.
+2. Work in two distinct phases:
+   - **PLANNING**: use `switch_modes` with `["planning", "one-shot", "no-onboarding"]`
+   - **EXECUTION**: use `switch_modes` with `["editing", "interactive", "no-onboarding"]`
