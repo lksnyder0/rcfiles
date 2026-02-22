@@ -126,7 +126,9 @@ alias neo="cd ${HOME}/code && tmux"
 
 alias kubectl="kubecolor"
 
-alias serena="uvx --from git+https://github.com/oraios/serena serena"
+alias oc="opencode"
+alias cc="claude"
+alias cr="claude --resume"
 
 for FILE in `find ~/.rcfiles/hostspecific/zsh -name "*.sh"`; do
     source $FILE
