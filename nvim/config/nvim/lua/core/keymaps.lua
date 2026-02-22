@@ -63,15 +63,18 @@ end, "Toggle between light and dark themes")
 map("n", "<leader>ur", "<cmd>nohl<cr>", "Clear highlights")
 
 -- AI Keymaps
-ai_map("i", "<C-l>", 'copilot#Accept("\\<CR>")', "Accept AI suggestion")
-vim.g.copilot_no_tab_map = true
-map("i", "<C-]>", "<Plug>(copilot-next)", "Next AI suggestion")
+-- ai_map("i", "<C-l>", 'copilot#Accept("\\<CR>")', "Accept AI suggestion")
+-- vim.g.copilot_no_tab_map = true
+-- map("i", "<C-]>", "<Plug>(copilot-next)", "Next AI suggestion")
 -- map("i", "<C-[>", "<Plug>(copilot-previous)", "Previous AI suggestion")
-map("i", "<C-\\>", "<Plug>(copilot-dismiss)", "Dismiss AI suggestion")
-map("n", "<leader>ai", "<cmd>Copilot panel<cr>", "Open AI suggestions panel")
-map("n", "<leader>ad", "<cmd>Copilot disable<cr>", "Disable AI suggestions")
-map("n", "<leader>ae", "<cmd>Copilot enable<cr>", "Enable AI suggestions")
-
+-- map("i", "<C-\\>", "<Plug>(copilot-dismiss)", "Dismiss AI suggestion")
+-- map("n", "<leader>ai", "<cmd>Copilot panel<cr>", "Open AI suggestions panel")
+-- map("n", "<leader>ad", "<cmd>Copilot disable<cr>", "Disable AI suggestions")
+-- map("n", "<leader>ae", "<cmd>Copilot enable<cr>", "Enable AI suggestions")
+map("n", "<leader>ac", "<cmdClaudeCode<cr>", "Toggle Claude Code Terminal")
+map("n", "<leader>aC", "<cmdClaudeCodeContinue<cr>", "Continue Last Claude Code Session")
+map("n", "<leader>aR", "<cmdClaudeCodeResume<cr>", "Claude Code Session Picker")
+map("n", "<leader>aV", "<cmdClaudeCodeVerbose<cr>", "Enable Verbose Logging")
 
 -- # Comments
 -- ## Normal mode
