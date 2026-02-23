@@ -149,7 +149,14 @@ return {
 			{ "<leader>am", "<cmd>ClaudeCodeSelectModel<cr>", desc = "Select model" },
 			{ "<leader>ab", "<cmd>ClaudeCodeAdd %<cr>", desc = "Add buffer" },
 			{ "<leader>as", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "Send selection" },
-			{ "<leader>aa", "<cmd>ClaudeCodeDiffAccept<cr>", desc = "Accept diff" },
+			{
+				"<leader>aa",
+				function()
+					vim.cmd("ClaudeCodeDiffAccept")
+					vim.cmd("ClaudeCodeFocus")
+				end,
+				desc = "Accept diff",
+			},
 			{ "<leader>ad", "<cmd>ClaudeCodeDiffDeny<cr>", desc = "Reject diff" },
 		},
 	},
