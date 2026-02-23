@@ -24,6 +24,12 @@ map("n", "<C-j>", "<C-w><C-j>", "Navigate windows down")
 map("n", "<C-k>", "<C-w><C-k>", "Navigate windows up")
 map("n", "<C-l>", "<C-w><C-l>", "Navigate windows to the right")
 
+-- Window navigation from terminal mode (e.g. Claude Code terminal)
+map("t", "<C-h>", "<C-\\><C-n><C-w><C-h>", "Navigate windows to the left")
+map("t", "<C-j>", "<C-\\><C-n><C-w><C-j>", "Navigate windows down")
+map("t", "<C-k>", "<C-\\><C-n><C-w><C-k>", "Navigate windows up")
+map("t", "<C-l>", "<C-\\><C-n><C-w><C-l>", "Navigate windows to the right")
+
 -- Move with shift-arrows
 map("n", "<S-Left>", "<C-w><S-h>", "Move window to the left")
 map("n", "<S-Down>", "<C-w><S-j>", "Move window down")

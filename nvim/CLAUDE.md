@@ -42,7 +42,7 @@ Plugin files and their contents:
 | `formatting.lua` | formatter.nvim, tidy.nvim |
 | `neo-tree.lua` | neo-tree.nvim |
 | `themes.lua` | NeoSolarized (default), catppuccin, gruvbox, others |
-| `ai.lua` | claude-code.nvim (Copilot fully commented out) |
+| `ai.lua` | claudecode.nvim (coder/claudecode.nvim), snacks.nvim |
 | `comments.lua` | Comment.nvim |
 | `misc.lua` | mini.move, vim-sleuth, vim-illuminate, barbecue |
 | `bufferline.lua` | bufferline.nvim |
@@ -83,7 +83,7 @@ return {
 | `<leader>dw` | Close window |
 | `<leader>db` / `<leader>do` / `<leader>da` | Delete buffer / others / all |
 | `<S-h>` / `<S-l>` | Previous / next buffer |
-| `<C-h/j/k/l>` | Navigate windows |
+| `<C-h/j/k/l>` | Navigate windows (works in normal and terminal mode) |
 | `<C-Up/Down/Left/Right>` | Resize window |
 | `<M-h>` / `<M-l>` | Beginning / end of line |
 | `<leader>ut` | Toggle dark/light theme |
@@ -121,10 +121,15 @@ return {
 | `co` / `ct` / `c0` / `cb` | git-conflict | Choose ours / theirs / none / both |
 | `cn` / `cp` | git-conflict | Next / prev conflict |
 | `<leader>te` | tidy.nvim | Toggle trailing whitespace removal |
-| `<leader>cc` | claude-code.nvim | Toggle Claude Code terminal |
-| `<leader>cC` | claude-code.nvim | Continue last session |
-| `<leader>cR` | claude-code.nvim | Session picker |
-| `<leader>cV` | claude-code.nvim | Verbose logging |
+| `<leader>ac` | claudecode.nvim | Toggle Claude terminal |
+| `<leader>af` | claudecode.nvim | Focus Claude |
+| `<leader>ar` | claudecode.nvim | Resume Claude (session picker) |
+| `<leader>aC` | claudecode.nvim | Continue Claude (last session) |
+| `<leader>am` | claudecode.nvim | Select model |
+| `<leader>ab` | claudecode.nvim | Add current buffer to context |
+| `<leader>as` | claudecode.nvim | Send visual selection |
+| `<leader>aa` | claudecode.nvim | Accept diff |
+| `<leader>ad` | claudecode.nvim | Reject diff |
 
 ### Treesitter Text Objects
 
