@@ -42,7 +42,7 @@ return {
 						{ desc = "Peak current line blame" })
 					map('n', '<leader>gtb', gs.toggle_current_line_blame, { desc = "Toggle current line blame" })
 					map('n', '<leader>gd', gs.diffthis, { desc = "Show diff" })
-					map('n', '<leader>gD', function() gs.diffthis('~') end, { desc = "Diff from ~" })
+					map('n', '<leader>gD', function() vim.cmd("Gdiffsplit HEAD") end, { desc = "Diff current changes" })
 					map('n', '<leader>gtd', gs.toggle_deleted, { desc = "Toggle deleted lines" })
 
 					-- Text object

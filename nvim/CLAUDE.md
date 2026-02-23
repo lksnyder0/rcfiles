@@ -117,7 +117,8 @@ return {
 | `<leader>gs` / `<leader>gu` | gitsigns | Stage buffer / undo stage hunk |
 | `<leader>gp` / `<leader>gB` | gitsigns | Preview hunk / blame line |
 | `<leader>gtb` / `<leader>gtd` | gitsigns | Toggle line blame / toggle deleted |
-| `<leader>gd` / `<leader>gD` | gitsigns | Diff this / diff from ~ |
+| `<leader>gd` | gitsigns | Diff this (working vs index) |
+| `<leader>gD` | vim-fugitive | Diff current changes vs HEAD (side-by-side) |
 | `co` / `ct` / `c0` / `cb` | git-conflict | Choose ours / theirs / none / both |
 | `cn` / `cp` | git-conflict | Next / prev conflict |
 | `<leader>te` | tidy.nvim | Toggle trailing whitespace removal |
