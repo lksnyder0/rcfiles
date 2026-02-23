@@ -1,0 +1,67 @@
+{
+  "permissions": {
+    "allow": [
+      "Mcp:context7:*",
+      "Mcp:microsoft-learn:*",
+      "Mcp:shortcut:*",
+      "WebFetch",
+      "WebSearch",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(cd:*)",
+      "Bash(pwd:*)",
+      "Bash(which:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(file:*)",
+      "Bash(du:*)",
+      "Bash(df:*)",
+      "Bash(echo:*)",
+      "Bash(env:*)",
+      "Bash(printenv:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote:*)",
+      "Bash(git tag:*)",
+      "Bash(git stash list:*)",
+      "Bash(git blame:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr status:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue status:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run list:*)",
+      "Search"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/luke.snyder/.claude/statusline-command.sh"
+  },
+  "enabledPlugins": {
+    "microsoft-docs@microsoft-docs-marketplace": true,
+    "context7@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "lua-lsp@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    }
+  }
+}
