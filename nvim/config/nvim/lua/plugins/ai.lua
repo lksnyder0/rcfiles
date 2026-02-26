@@ -140,6 +140,9 @@ return {
 			terminal = {
 				split_width_percentage = 0.40,
 			},
+			diff_opts = {
+				open_in_new_tab = true,
+			},
 		},
 		keys = {
 			{ "<leader>ac", "<cmd>ClaudeCode<cr>", desc = "Toggle Claude" },
