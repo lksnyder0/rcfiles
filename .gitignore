@@ -22,5 +22,8 @@ ai-configs/context7/config.json
 !ai-configs/**/README.md
 !ai-configs/**/README.txt
 
+# Git worktrees
+.worktrees/
+
 # Pre-commit / secret scanning
 .secrets.baseline
