@@ -9,15 +9,23 @@ Personal dotfiles for Linux and macOS environments.
 ```
 .rcfiles/
 ├── nvim/                 # Neovim configuration (primary editor)
+│   ├── CLAUDE.md         # Neovim-specific AI guidance
 │   └── config/nvim/      # Symlinked to ~/.config/nvim
 ├── zshrc                 # ZSH configuration (oh-my-zsh)
 ├── zfunc/                # Custom ZSH functions (autoloaded)
 ├── tmux.conf             # Tmux configuration
 ├── conky/                # Conky configs (Linux-only)
+│   └── CLAUDE.md         # Conky-specific AI guidance
+├── ai-configs/           # AI tool configuration backups
+├── claude/               # Local Claude Code settings and skills
+│   └── skills/           # Custom skill files (commit, pr, huntress)
+├── docs/                 # Tool-specific documentation
+│   └── plans/            # Implementation plan documents
+├── scripts/              # Utility and setup scripts
 ├── hostspecific/zsh/     # Machine-specific configs (ephemeral, not committed)
 ├── tool-versions         # asdf version definitions
 ├── cheatsheets/          # Git submodule with vim/tmux cheatsheets
-└── docs/                 # Tool-specific documentation
+└── .worktrees/           # Git worktrees (ignored, not committed)
 ```
 
 ## Deployment
@@ -43,17 +51,18 @@ Each file in `nvim/config/nvim/lua/plugins/` is a lazy.nvim plugin spec:
 
 | File | Purpose |
 |------|---------|
-| `lsp.lua` | LSP configuration via Mason |
-| `cmp.lua` | Autocompletion (nvim-cmp) |
-| `treesitter.lua` | Syntax highlighting/parsing |
-| `telescope.lua` | Fuzzy finder |
+| `lsp.lua` | LSP configuration via Mason (mason, nvim-lspconfig, fidget, barbecue, navic) |
+| `cmp.lua` | Autocompletion (nvim-cmp, luasnip, friendly-snippets) |
+| `treesitter.lua` | Syntax highlighting/parsing (nvim-treesitter, treesitter-context) |
+| `telescope.lua` | Fuzzy finder (telescope.nvim, fzf-native) |
 | `git.lua` | Git integration (gitsigns, fugitive, git-conflict) |
 | `neo-tree.lua` | File explorer |
-| `themes.lua` | Colorschemes |
+| `themes.lua` | Colorschemes (NeoSolarized default, catppuccin, gruvbox, rose-pine, everforest) |
 | `formatting.lua` | Code formatters (formatter.nvim, tidy.nvim) |
-| `databases.lua` | Database UI (vim-dadbod) |
-| `ai.lua` | GitHub Copilot |
-| `misc.lua` | Comment.nvim, mini.move, vim-sleuth |
+| `databases.lua` | Database UI (vim-dadbod, vim-dadbod-ui, vim-dadbod-completion) |
+| `ai.lua` | claudecode.nvim + snacks.nvim (see AI Integration section) |
+| `comments.lua` | Comment.nvim |
+| `misc.lua` | mini.move, vim-sleuth |
 | `bufferline.lua` | Buffer tabs |
 | `lualine.lua` | Statusline |
 | `which-key.lua` | Keybinding hints |
@@ -70,10 +79,27 @@ Ensured: go, lua, python, vim, ruby, terraform, dockerfile, git_config, git_reba
 | Go | gofmt |
 | Python | black |
 | Ruby | rubocop |
-| Terraform/HCL | terraform fmt / packer fmt |
+| Terraform/HCL | tofu fmt / packer fmt |
 | JSON | jq |
 | Lua | stylua |
 | XML | xmlformatter |
+
+### Core Lua Structure
+| File | Purpose |
+|------|---------|
+| `lua/core/init.lua` | Entry point; loads lazy, keymaps, options |
+| `lua/core/keymaps.lua` | Global keymaps (file ops, buffers, windows, navigation) |
+| `lua/core/options.lua` | Editor options (indent=4, no wrap, relative numbers) |
+| `lua/core/lazy.lua` | lazy.nvim bootstrap; sets leader to `<Space>` |
+| `lua/helpers/buffers.lua` | Buffer utility functions |
+| `lua/helpers/colorscheme.lua` | Colorscheme loading helper |
+| `lua/helpers/keys.lua` | Keymap helper functions |
+
+### AI Integration (claudecode.nvim)
+- Custom `openFile` handler: opens files in **new tabs** (`tabedit`) instead of splits
+- Diff views open in new tabs via `diff_opts = { open_in_new_tab = true }`
+- Terminal split width: 40% (`split_width_percentage`)
+- Keymaps: `<leader>ac/af/ar/aC/am/ab/as/aa/ad`
 
 ### Adding New Plugins
 1. Create a new `.lua` file in `nvim/config/nvim/lua/plugins/`
@@ -105,9 +131,10 @@ Functions are autoloaded via `autoload -Uz <function_name>` in zshrc.
 ### Key Aliases
 - `c_nvim`, `c_zsh` - Edit configs
 - `r_zsh` - Reload zshrc
-- `prc`, `prcd`, `prv`, `prm` - GitHub PR workflow shortcuts
+- `prc`, `prcd`, `prr`, `prv`, `prm`, `prma` - GitHub PR workflow shortcuts
 - `neo` - cd to ~/code and start tmux
 - `incognito` / `cognito` - Toggle shell history
+- `cc` / `cr` / `oc` - AI tool shortcuts (claude, claude --resume, opencode)
 
 ---
 
@@ -118,6 +145,8 @@ Functions are autoloaded via `autoload -Uz <function_name>` in zshrc.
 - Split: `|` (horizontal), `-` (vertical)
 - New named window: `C-a C`
 - Reload config: `C-a r`
+- Window base index: 1 (not 0)
+- escape-time: 0 (no vim delay)
 - Solarized-inspired color scheme
 - Status bar shows: hostname, kernel, uptime, time/date
 
@@ -132,10 +161,26 @@ Power-aware configuration:
 
 ---
 
+## AI Tools
+
+### Claude Code Integration
+- `claude/settings.json` and `claude/settings.local.json` - Local Claude Code settings
+- `claude/skills/` - Custom skills: `commit`, `pr`, `huntress`
+- `ai-configs/claude/` - Global Claude instructions (CLAUDE-personal.md, CLAUDE-work.md)
+
+### Other AI Tools
+- **Serena** - Semantic code navigation via MCP server
+- **Context7** - Real-time library documentation via MCP server
+- `ai-configs/` - Configuration backups for all AI tools
+- `deploy-ai-configs.sh` - Deploys AI configs to system locations
+- `docs/ai-tools.md` - AI tools integration guide
+
+---
+
 ## asdf Tool Versions
 
 Managed versions (in `tool-versions`):
-- ruby, nodejs, yarn, packer, aws-vault, python
+- ruby 3.4.3, nodejs 22.7.0, yarn 1.22.19, packer 1.8.4, aws-vault 7.2.0, python 3.13.3
 
 ---
 
@@ -163,6 +208,8 @@ When making changes to this repository, keep documentation in sync:
 - `docs/neovim.md` - Neovim configuration details
 - `docs/tmux.md` - Tmux configuration details
 - `docs/conky.md` - Conky configuration details (Linux-only)
+- `docs/ai-tools.md` - AI tools integration guide
+- `docs/plans/` - Implementation plan documents
 
 ### Guidelines
 1. Follow existing documentation patterns and table formats
@@ -174,4 +221,3 @@ When making changes to this repository, keep documentation in sync:
 7. When in the PLANNING phase use the `switch_modes` tool to set the modes to `["planning", "one-shot", "no-onboarding"]`.
 8. When in the EXECUTION phase use the `switch_modes` tool to set the modes to `["editing", "interactive", "no-onboarding"]`.
 9. Review this list to ensure you're ready to work successfully.
-
