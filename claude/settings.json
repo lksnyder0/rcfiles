@@ -72,7 +72,7 @@
     "code-review@claude-plugins-official": true,
     "lua-lsp@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
-    "huntress@local": true
+    "security-guidance@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -81,5 +81,7 @@
         "repo": "anthropics/claude-plugins-official"
       }
     }
-  }
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "effortLevel": "medium"
 }
