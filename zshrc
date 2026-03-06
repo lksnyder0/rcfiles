@@ -129,6 +129,9 @@ alias kubectl="kubecolor"
 alias oc="opencode"
 alias cc="claude"
 alias cr="claude --resume"
+alias w="wt list"
+alias ws="wt switch"
+alias wsc="wt switch --create"
 
 for FILE in `find ~/.rcfiles/hostspecific/zsh -name "*.sh"`; do
     source $FILE
@@ -178,3 +181,5 @@ export RPROMPT="%F{green}$AWS_VAULT%f$RPROMPT"
 
 compdef kubecolor=kubectl
 # zprof
+
+if command -v wt >/dev/null 2>&1; then eval "$(command wt config shell init zsh)"; fi
