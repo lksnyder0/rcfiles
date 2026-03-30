@@ -16,14 +16,14 @@ Generate a structured daily note by gathering activity from Shortcut, GitHub, Sl
 
 ## Step 1: Gather Data
 
-Gather data from all sources. Each source is independent — if one fails, note it and continue with the others. Use the Agent tool to run independent sources in parallel where possible.
+Gather data from all sources in parallel. Each source is independent — if one fails, note it and continue with the others.
 
 ### 1a. Shortcut Stories
 
 1. Call `mcp__shortcut__users-get-current` to get your user ID and mention name.
-2. Call `mcp__shortcut__users-get-current-teams` to find the SRE team ID.
-3. Call `mcp__shortcut__stories-search` with query: stories assigned to the user, updated today (use `updated:today owner:me` or equivalent Shortcut search syntax).
-4. Call `mcp__shortcut__stories-search` with query: stories owned by the SRE team, updated today.
+2. Call `mcp__shortcut__users-get-current-teams` to find the SRE team ID. From the returned teams, select the team whose name contains 'SRE'.
+3. Call `mcp__shortcut__stories-search` with a natural language query string describing what you need (e.g., "Search for stories where the owner is [user mention name] and updated after [today's date in YYYY-MM-DD]"). Let the tool interpret the query — do not assume specific filter syntax.
+4. Call `mcp__shortcut__stories-search` with a natural language query string for team stories (e.g., "Search for stories owned by team [SRE team name] and updated after [today's date in YYYY-MM-DD]").
 5. Deduplicate stories that appear in both result sets (match by story ID).
 6. For each story, record:
    - Story ID (e.g., `SC-12345`)
@@ -104,7 +104,7 @@ If Glean returns no calendar results, record: `"Calendar: unavailable"` and cont
 3. Identify related Obsidian Notes by scanning the spec content for topic keywords that match files in `Vaults/Work/Notes/`. Use Glob to list available Notes files and match against spec content.
    - Example: a spec mentioning "Tailscale" links to `[[Tailscale]]` if `Notes/Tailscale.md` exists
    - Example: a spec about "Elasticsearch data streams" links to `[[elasticsearch]]` if `Notes/elasticsearch.md` exists
-4. For each spec, prepare a backlink line to add to the top of the spec file: `> Daily note: [[YYYY-MM-DD]]` (today's date)
+4. For each spec, prepare a backlink line: `> Daily note: [[YYYY-MM-DD]]` (today's date). Insert it immediately after the YAML frontmatter closing `---` delimiter (if present), with a blank line before the first heading. If no frontmatter exists, insert it as the first line of the file.
 
 If no specs match today's date, skip this section.
 
@@ -115,6 +115,13 @@ If no specs match today's date, skip this section.
 3. These are used later for:
    - Cross-referencing against detected promised action items (to avoid suggesting duplicates)
    - Generating the "tomorrow" recommendation
+
+### All Sources Check
+
+If ALL data sources returned unavailable or empty results (no stories, no PRs, no Slack messages, no calendar events, no specs, and TODO.md is empty), report to the user:
+> "All data sources returned empty or unavailable. Nothing to summarize today."
+
+Stop here — do not proceed to synthesis.
 
 ## Step 2: Synthesize
 
@@ -188,7 +195,7 @@ Wait for the user's response. If they request edits, make them and re-present. O
 
 For each spec found in Step 1e:
 - Read the spec file
-- If it does not already contain a backlink to today's daily note, add `> Daily note: [[YYYY-MM-DD]]` as the first line of the file (before the title heading)
+- If it does not already contain a backlink to today's daily note, insert `> Daily note: [[YYYY-MM-DD]]` immediately after the YAML frontmatter closing `---` delimiter (if present), with a blank line before the first heading. If no frontmatter exists, insert it as the first line of the file.
 - Write the updated spec file
 
 ### 4c. Update TODO.md
@@ -206,9 +213,9 @@ For dismissed Suggested TODOs: remove them from the daily note's `## Suggested T
 ### Obsidian Formatting Conventions
 
 Use these conventions throughout all written content:
-- Wiki links for cross-references: `[[SC-12345]]`, `[[YYYY-MM-DD]]`
+- Wiki links for cross-references: `[[YYYY-MM-DD]]`
 - Checkbox syntax: `- [x]` for completed, `- [ ]` for open
-- Shortcut story links with display text: `[[SC-12345|Story title]]`
+- Shortcut story links as URLs: `[SC-12345: Story title](https://app.shortcut.com/huntress/story/12345)`
 - Spec links with display text: `[[2026-03-30-eod-skill-design|EOD Skill Design]]`
 - Note links: `[[Tailscale]]`, `[[elasticsearch]]`, etc.
 - Meeting times in 24h format: `10:00 — Meeting title`
