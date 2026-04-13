@@ -112,7 +112,7 @@ alias incognito=" unset HISTFILE"
 alias lah="ls -lah"
 alias r_p10k="p10k reload"
 alias r_zsh="source ~/.zshrc"
-alias rt="ttt roll https://ttt.idex.huntress.io rampart luke"
+alias rt="ttt roll https://ttt.idex.rexbox.dev rampart luke"
 
 alias prc="gh pr create -a '@me'"
 alias prcd="gh pr create -a '@me' --draft"
