@@ -125,7 +125,7 @@ return {
 					local detailed_info = {
 						success = true,
 						filePath = file_path,
-						languageId = vim.api.nvim_buf_get_option(buf, "filetype"),
+						languageId = vim.bo[buf].filetype,
 						lineCount = vim.api.nvim_buf_line_count(buf),
 					}
 					return {

@@ -5,8 +5,8 @@ return {
 		dependencies = {
 			"williamboman/mason.nvim",
 			"williamboman/mason-lspconfig.nvim",
-			{ "j-hui/fidget.nvim", branch = "legacy" },
-			"folke/neodev.nvim",
+			{ "j-hui/fidget.nvim" },
+			{ "folke/lazydev.nvim", ft = "lua", opts = {} },
 			"RRethy/vim-illuminate",
 			"hrsh7th/cmp-nvim-lsp",
 			"lukas-reineke/lsp-format.nvim",
@@ -37,8 +37,7 @@ return {
 			-- Quick access via keymap
 			require("helpers.keys").map("n", "<leader>M", "<cmd>Mason<cr>", "Show Mason")
 
-			-- Neodev setup before LSP config
-			require("neodev").setup()
+			-- lazydev.nvim is configured via its opts above (lazy-loaded on ft=lua)
 
 			-- Turn on LSP status information
 			require("fidget").setup()
@@ -64,18 +63,16 @@ return {
 			})
 
 
-			-- Set up cool signs for diagnostics
-			local signs = { Error = " ", Warn = " ", Hint = " ", Info = " " }
-			for type, icon in pairs(signs) do
-				local hl = "DiagnosticSign" .. type
-				vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = "" })
-			end
-
 			-- Diagnostic config
-			local config = {
+			vim.diagnostic.config({
 				virtual_text = false,
 				signs = {
-					active = signs,
+					text = {
+						[vim.diagnostic.severity.ERROR] = " ",
+						[vim.diagnostic.severity.WARN] = " ",
+						[vim.diagnostic.severity.HINT] = " ",
+						[vim.diagnostic.severity.INFO] = " ",
+					},
 				},
 				update_in_insert = true,
 				underline = true,
@@ -84,12 +81,11 @@ return {
 					focusable = true,
 					style = "minimal",
 					border = "rounded",
-					source = "always",
+					source = true,
 					header = "",
 					prefix = "",
 				},
-			}
-			vim.diagnostic.config(config)
+			})
 
 			-- This function gets run when an LSP connects to a particular buffer.
 			local on_attach = function(client, bufnr)
