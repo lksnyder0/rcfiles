@@ -1,7 +1,7 @@
 ---
 name: huntress:commit
 description: Create a git commit. Use this skill whenever you need to commit code changes.
-allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git commit:*)
+allowed-tools: Bash(git add *), Bash(git status *), Bash(git diff *), Bash(git log *), Bash(git commit *)
 ---
 
 ## Context

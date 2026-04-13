@@ -6,60 +6,82 @@
       "Mcp:shortcut:*",
       "WebFetch",
       "WebSearch",
-      "Bash(ls:*)",
-      "Bash(find:*)",
-      "Bash(cd:*)",
-      "Bash(pwd:*)",
-      "Bash(which:*)",
-      "Bash(cat:*)",
-      "Bash(head:*)",
-      "Bash(tail:*)",
-      "Bash(wc:*)",
-      "Bash(file:*)",
-      "Bash(du:*)",
-      "Bash(df:*)",
-      "Bash(echo:*)",
-      "Bash(env:*)",
-      "Bash(printenv:*)",
-      "Bash(grep:*)",
-      "Bash(rg:*)",
-      "Bash(git status:*)",
-      "Bash(git log:*)",
-      "Bash(git diff:*)",
-      "Bash(git show:*)",
-      "Bash(git branch:*)",
-      "Bash(git remote:*)",
-      "Bash(git tag:*)",
-      "Bash(git stash list:*)",
-      "Bash(git blame:*)",
-      "Bash(gh pr view:*)",
-      "Bash(gh pr list:*)",
-      "Bash(gh pr diff:*)",
-      "Bash(gh pr checks:*)",
-      "Bash(gh pr status:*)",
-      "Bash(gh issue view:*)",
-      "Bash(gh issue list:*)",
-      "Bash(gh issue status:*)",
-      "Bash(gh run view:*)",
-      "Bash(gh run list:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(git checkout:*)",
-      "Bash(git switch:*)",
-      "Bash(git fetch:*)",
-      "Bash(git pull:*)",
-      "Bash(git merge:*)",
-      "Bash(git worktree:*)",
-      "Bash(gh pr create:*)",
-      "Bash(gh pr edit:*)",
-      "Bash(gh pr close:*)",
-      "Bash(gh pr merge:*)",
-      "Bash(uv:*)",
-      "Bash(tofu fmt:*)",
-      "Bash(tofu init:*)",
-      "Bash(tofu validate:*)",
-      "Search"
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(cd *)",
+      "Bash(pwd *)",
+      "Bash(which *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(file *)",
+      "Bash(du *)",
+      "Bash(df *)",
+      "Bash(echo *)",
+      "Bash(env *)",
+      "Bash(printenv *)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git remote *)",
+      "Bash(git tag *)",
+      "Bash(git stash list *)",
+      "Bash(git blame *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr status *)",
+      "Bash(gh issue view *)",
+      "Bash(gh issue list *)",
+      "Bash(gh issue status *)",
+      "Bash(gh run view *)",
+      "Bash(gh run list *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git merge *)",
+      "Bash(git worktree *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr edit *)",
+      "Bash(gh pr close *)",
+      "Bash(gh pr merge *)",
+      "Bash(uv *)",
+      "Bash(tofu fmt *)",
+      "Bash(tofu init *)",
+      "Bash(tofu validate *)",
+      "Search",
+      "Bash(cat *)"
+    ]
+  },
+  "model": "opus[1m]",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r f; case \"$f\" in *.tf) tofu fmt -check -diff \"$f\" 2>/dev/null || true ;; esac; }",
+            "timeout": 10,
+            "statusMessage": "Checking tofu fmt..."
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/helm-lint.sh",
+            "timeout": 15,
+            "statusMessage": "Checking helm lint..."
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -83,5 +105,35 @@
     }
   },
   "skipDangerousModePermissionPrompt": true,
-  "effortLevel": "medium"
+  "sandbox": {
+    "enabled": true,
+    "autoAllow": true,
+    "filesystem": {
+      "allowWrite": [
+        ".",
+        "~/.kube",
+        "~/.config",
+        "~/.cache/uv",
+        "~/code/**/.git/config"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "pypi.org",
+        "files.pythonhosted.org",
+        "upload.pypi.org",
+        "spacelift.io",
+        "huntress-monitoring-892dfe.kb.eastus2.azure.elastic-cloud.com"
+      ]
+    },
+    "excludedCommands": [
+      "docker",
+      "gh",
+      "uv",
+      "pytest"
+    ],
+    "enableWeakerNetworkIsolation": true
+  }
 }
