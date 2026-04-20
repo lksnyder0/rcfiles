@@ -66,7 +66,6 @@ export ZSH_TMUX_AUTOSTART=false
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(
   alias-finder
-  archlinux
   asdf
   aws
   docker
@@ -127,11 +126,13 @@ alias neo="cd ${HOME}/code && tmux"
 alias kubectl="kubecolor"
 
 alias oc="opencode"
-alias cc="claude"
+alias cc="claude --dangerously-skip-permissions"
 alias cr="claude --resume"
 alias w="wt list"
 alias ws="wt switch"
 alias wsc="wt switch --create"
+alias wr="wt remove"
+alias wrf="wt remove -D --force"
 
 for FILE in `find ~/.rcfiles/hostspecific/zsh -name "*.sh"`; do
     source $FILE
@@ -140,14 +141,21 @@ done
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
 export PATH="$PATH:$HOME/.rvm/bin"
 
+# Lazy-load NVM (defers ~300ms until first use)
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+nvm() {
+  unset -f nvm node npm npx
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  nvm "$@"
+}
+node() { nvm --version >/dev/null 2>&1; unset -f node; node "$@"; }
+npm() { nvm --version >/dev/null 2>&1; unset -f npm; npm "$@"; }
+npx() { nvm --version >/dev/null 2>&1; unset -f npx; npx "$@"; }
 # export PYENV_ROOT="$HOME/.pyenv"
 # command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
 # eval "$(pyenv init -)"
 # aws-vault completions
-eval "$(curl -fs https://raw.githubusercontent.com/99designs/aws-vault/master/contrib/completions/zsh/aws-vault.zsh)"
+# aws-vault completions loaded via FPATH from ~/.rcfiles/zfunc/_aws-vault
 
 export PIPENV_VENV_IN_PROJECT=1
 
