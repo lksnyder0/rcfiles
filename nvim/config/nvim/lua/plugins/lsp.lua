@@ -58,6 +58,9 @@ return {
 			}, {
 				group = vim.api.nvim_create_augroup("barbecue.updater", {}),
 				callback = function()
+					if vim.bo.filetype == "terraform" then
+						return
+					end
 					require("barbecue.ui").update()
 				end,
 			})
@@ -127,11 +130,27 @@ return {
 				"gopls", -- Go
 				"marksman", -- Markdown
 				"solargraph", -- Ruby
-				"terraformls", -- Terraform
 				"lemminx", -- XML
 				"jsonls", -- JSON
 				"yamlls", -- YAML
 			}
+
+			-- terraform-ls chokes on files with complex mixed heredoc syntax,
+			-- so we prevent it from attaching to known problematic files
+			local terraform_blocklist = { "elasticsearch_monitors.tf" }
+			vim.lsp.config("terraformls", {
+				on_attach = on_attach,
+				capabilities = capabilities,
+				root_dir = function(bufnr)
+					local fname = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":t")
+					for _, blocked in ipairs(terraform_blocklist) do
+						if fname == blocked then
+							return nil
+						end
+					end
+					return vim.fs.root(bufnr, { ".terraform", ".git" })
+				end,
+			})
 			for _, v in ipairs(default_lsp_config) do
 				vim.lsp.config(v, {
 					on_attach = on_attach,

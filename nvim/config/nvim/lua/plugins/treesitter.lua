@@ -29,6 +29,22 @@ return {
 					"markdown_inline",
 				},
 			})
+
+			require("treesitter-context").setup({
+				enable = true,
+				on_attach = function(buf)
+					return vim.bo[buf].filetype ~= "terraform"
+				end,
+			})
+
+			-- Disable treesitter highlighting for terraform — the HCL parser
+			-- chokes on mixed heredoc syntax (Terraform + Handlebars templates)
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = "terraform",
+				callback = function(args)
+					vim.treesitter.stop(args.buf)
+				end,
+			})
 		end,
 	},
 }
