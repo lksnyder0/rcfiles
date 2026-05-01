@@ -100,8 +100,8 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/session-indexer/post_tool_use.py",
-            "async": true,
-            "timeout": 10
+            "timeout": 10,
+            "async": true
           }
         ]
       }
@@ -129,7 +129,8 @@
     "code-review@claude-plugins-official": true,
     "lua-lsp@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
-    "security-guidance@claude-plugins-official": true
+    "security-guidance@claude-plugins-official": true,
+    "document-skills@anthropic-agent-skills": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -137,21 +138,16 @@
         "source": "github",
         "repo": "anthropics/claude-plugins-official"
       }
+    },
+    "anthropic-agent-skills": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/skills"
+      }
     }
   },
-  "skipDangerousModePermissionPrompt": true,
   "sandbox": {
     "enabled": true,
-    "autoAllow": true,
-    "filesystem": {
-      "allowWrite": [
-        ".",
-        "~/.kube",
-        "~/.config",
-        "~/.cache/uv",
-        "~/code/**/.git/config"
-      ]
-    },
     "network": {
       "allowedDomains": [
         "github.com",
@@ -163,12 +159,24 @@
         "huntress-monitoring-892dfe.kb.eastus2.azure.elastic-cloud.com"
       ]
     },
+    "filesystem": {
+      "allowWrite": [
+        ".",
+        "~/.kube",
+        "~/.config",
+        "~/.cache/uv",
+        "~/code/**/.git/config"
+      ]
+    },
+    "enableWeakerNetworkIsolation": true,
     "excludedCommands": [
       "docker",
       "gh",
       "uv",
       "pytest"
     ],
-    "enableWeakerNetworkIsolation": true
-  }
+    "autoAllow": true
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "effortLevel": "high"
 }
