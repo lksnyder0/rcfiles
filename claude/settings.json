@@ -62,7 +62,6 @@
       "Bash(cat *)"
     ]
   },
-  "model": "opus[1m]",
   "hooks": {
     "SessionStart": [
       {
@@ -130,7 +129,8 @@
     "lua-lsp@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
-    "document-skills@anthropic-agent-skills": true
+    "document-skills@anthropic-agent-skills": true,
+    "ruby-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -177,6 +177,8 @@
     ],
     "autoAllow": true
   },
+  "effortLevel": "high",
   "skipDangerousModePermissionPrompt": true,
-  "effortLevel": "high"
+  "editorMode": "vim",
+  "skipAutoPermissionPrompt": true
 }

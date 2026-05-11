@@ -126,7 +126,7 @@ alias neo="cd ${HOME}/code && tmux"
 alias kubectl="kubecolor"
 
 alias oc="opencode"
-alias cc="claude --dangerously-skip-permissions"
+alias cc="claude --permission-mode auto"
 alias cr="claude --resume"
 alias w="wt list"
 alias ws="wt switch"
