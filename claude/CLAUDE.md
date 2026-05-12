@@ -21,6 +21,11 @@ This workflow is mandatory. Do not skip or reorder steps.
 ## Specs
 
 - Always save design specs to `Vaults/Work/Specs/` (relative to the workspace root at `~/code`).
+- When creating a new spec, use the template at `Vaults/Work/Templates/Specs.md`. Name files with a `YYYY-MM-DD-` date prefix.
+
+## Authoring content
+
+When drafting content on Luke's behalf (Slack messages, design specs, runbooks, docs), read `~/.claude/writing-voice.md` first and match his voice and structure.
 
 ## Tools
 
