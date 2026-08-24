@@ -12,6 +12,7 @@ Generate a structured daily note by gathering activity from Shortcut, GitHub, Sl
 **Daily note path:** `Daily notes/YYYY/MM-<Month>/YYYY-MM-DD.md` (use today's date, e.g., `Daily notes/2026/03-March/2026-03-30.md`)
 **TODO.md path:** `TODO.md` (relative to vault root)
 **Specs path:** `Specs/` (relative to vault root)
+**Plans path:** `Plans/` (relative to vault root)
 **Notes path:** `Notes/` (relative to vault root)
 
 **Shortcut constants (do not look these up at runtime):**
@@ -95,13 +96,14 @@ For each relevant result:
 
 If Glean is unavailable or returns no Slack results, record: `"Slack: unavailable"` and continue.
 
-### 1d. Specs Written Today
+### 1d. Specs and Plans Written Today
 
-1. Use Glob to find specs written today:
+1. Use Glob to find specs and plans written today:
    ```
    Glob pattern: Vaults/Work/Specs/YYYY-MM-DD-*.md (substitute today's date)
+   Glob pattern: Vaults/Work/Plans/YYYY-MM-DD-*.md (substitute today's date)
    ```
-2. For each spec found, Read the file and extract:
+2. For each file found, Read it and extract:
    - The title (first `#` heading)
    - A one-line summary of what was designed (from the Overview section or first paragraph)
 3. Identify related Obsidian Notes by scanning the spec content for topic keywords that match the cached Notes file list.
@@ -119,11 +121,12 @@ Read pre-built session index files for metadata. For research sessions, do targe
 
 **Procedure:**
 
-1. **Load today's sessions.** Run the helper script:
+1. **Load today's sessions and costs.** Run both helper scripts in parallel:
    ```bash
    python3 ~/.claude/skills/eod/load_sessions.py YYYY-MM-DD
+   python3 ~/.claude/skills/eod/session_costs.py YYYY-MM-DD --json
    ```
-   This returns a JSON array of matching session objects (filters by `days_active`, `started_at`, or `ended_at`). Parse the output.
+   `load_sessions.py` returns a JSON array of session objects (filters by `days_active`, `started_at`, or `ended_at`). `session_costs.py --json` returns a cost summary object with `total_cost_usd`, `total_tokens`, and `by_model`. Parse both outputs.
 
 2. **Categorize each session:**
    - **Started**: `started_at` date == today
@@ -242,7 +245,11 @@ Build the daily note content with these sections (omit any section that has no d
 2. `## In Progress` — active stories and open PRs
 3. `## Slack Highlights` — key threads, decisions, action items
 4. `## Specs Written` — specs from today with links to related Notes
-5. `## Claude Sessions` — summary of today's Claude Code sessions (time, cwd, type, topic). For research sessions, include key findings as sub-bullets. For multi-day sessions, show under a `### Ongoing Sessions` sub-heading with the activity chain: `Active: [[date1]] > [[date2]] > **[[today]]**` (today bolded). Include the day count as "(day N, status)".
+5. `## Claude Sessions` — summary of today's Claude Code sessions (time, cwd, type, topic). For research sessions, include key findings as sub-bullets. For multi-day sessions, show under a `### Ongoing Sessions` sub-heading with the activity chain: `Active: [[date1]] > [[date2]] > **[[today]]**` (today bolded). Include the day count as "(day N, status)". At the end of the section, add a cost line using data from `session_costs.py`:
+   ```
+   **Estimated cost:** ~$X.XX (Yk input, Zk output, Nk cache read)
+   ```
+   If multiple models were used, list per-model costs in a parenthetical: `(sonnet-4-6: $X.XX, haiku-4-5: $X.XX)`. Omit the cost line if `total_cost_usd` is 0.
 6. `## Knowledge Base Updates` — updates to existing Obsidian Notes based on all sources (merged PRs, completed stories, specs, Slack decisions, research sessions). For each Note, list the updates with source references.
 7. `## Suggested New Notes` — topics from today's activity that don't match existing Notes and have ongoing relevance. Show the proposed Note filename and a brief description of what it would contain.
 8. `## Suggested TODOs` — detected commitments not in TODO.md, plus open tasks from Claude sessions
@@ -252,12 +259,18 @@ Build the daily note content with these sections (omit any section that has no d
 
 Write all output files directly. No review gate — all suggested items (TODOs, Research Note Updates, New Notes) are auto-accepted.
 
-**Execution order:** Run 3a first (creates/updates the daily note). Then run 3b, 3c, and 3d in parallel (they write to independent files). Run 3e last (it modifies the daily note written in 3a).
+**Execution order:** Run 3a first (creates/updates the daily note). Then run 3b, 3c, and 3d in parallel (they write to independent files). Then run 3e (moves files, appends to the daily note). Run 3f last (creates new Note files and updates the daily note).
 
 ### 3a. Update or Create the Daily Note
 
 **Path:** `/Users/luke.snyder/code/Vaults/Work/Daily notes/YYYY/MM-<Month>/YYYY-MM-DD.md` (e.g., `Daily notes/2026/03-March/2026-03-30.md`). Create parent directories if they don't exist.
 
+**Frontmatter:** Always write a `claude_cost_usd` field using the value from `session_costs.py`. Round to 4 decimal places.
+- If the file has no frontmatter, prepend `---\nclaude_cost_usd: X.XXXX\n---\n` before all content.
+- If the file already has a frontmatter block (`---` ... `---`), add or update `claude_cost_usd: X.XXXX` within it. Do not remove any existing frontmatter fields.
+- If `total_cost_usd` is 0, omit the field entirely.
+
+**Content:**
 - If the file does not exist, create it with the draft content.
 - If the file already exists, merge the new content:
   - For each section (`## Completed`, `## In Progress`, etc.):
@@ -296,7 +309,22 @@ For each Knowledge Base Update:
    If an `## Updates (YYYY-MM-DD)` section for today already exists, append to it instead of creating a duplicate.
 3. Write the updated Note file.
 
-### 3e. Create New Obsidian Notes
+### 3e. Archive Implemented Specs and Plans
+
+Move any spec or plan whose frontmatter `status` is `implemented` out of the active directory and into the corresponding `Implemented/` subfolder.
+
+1. Glob all `.md` files directly in `Vaults/Work/Specs/` (non-recursive — skip `Specs/Implemented/`).
+2. Glob all `.md` files directly in `Vaults/Work/Plans/` (non-recursive — skip `Plans/Implemented/`).
+3. For each file, read its frontmatter. If `status: implemented`, move it:
+   - `Specs/<file>.md` → `Specs/Implemented/<file>.md`
+   - `Plans/<file>.md` → `Plans/Implemented/<file>.md`
+   Use `mv` via Bash. Do not modify file contents.
+4. If any files were moved, append a brief note to the daily note's `## Completed` section:
+   ```
+   - Archived [N] implemented spec(s)/plan(s) to Implemented/
+   ```
+
+### 3f. Create New Obsidian Notes
 
 For each Suggested New Note:
 1. Create the Note file at `Vaults/Work/Notes/<TopicName>.md`.

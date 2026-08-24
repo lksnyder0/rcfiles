@@ -18,10 +18,15 @@ This workflow is mandatory. Do not skip or reorder steps.
 - Always create a new git branch before starting any code changes or writing any files. Name the branch descriptively based on the task (e.g., `feat/add-login-page`, `fix/null-pointer-error`). Do not make changes directly on the current branch unless explicitly instructed otherwise.
 - Never commit directly to `main`. Always work on a separate branch and use a pull request workflow.
 
-## Specs
+## Specs and Implementation Plans
 
-- Always save design specs to `Vaults/Work/Specs/` (relative to the workspace root at `~/code`).
-- When creating a new spec, use the template at `Vaults/Work/Templates/Specs.md`. Name files with a `YYYY-MM-DD-` date prefix.
+- Always save **design specs** to `Vaults/Work/Specs/` and **implementation plans** to `Vaults/Work/Plans/` (relative to the workspace root at `~/code`).
+- Use the template at `Vaults/Work/Templates/Specs.md` for specs and `Vaults/Work/Templates/Plans.md` for implementation plans. Name files with a `YYYY-MM-DD-` date prefix.
+- This overrides the default save locations in the `superpowers:writing-plans` and `superpowers:brainstorming` skills (`docs/superpowers/plans/` and `docs/superpowers/specs/`).
+- **Always link specs and plans together:**
+  - When writing an implementation plan, set its `spec:` frontmatter field to a wikilink pointing to the associated spec (e.g. `spec: "[[2026-05-13-my-feature-design]]"`), then update the spec's `plans:` field to include a wikilink back to the new plan.
+  - If the spec is written first (before a plan exists), leave `plans:` empty and fill it in once the plan is created.
+  - When a PR is created as part of implementing a plan, add the PR URL to the plan's `prs:` frontmatter field.
 
 ## Authoring content
 

@@ -1,9 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Mcp:context7:*",
-      "Mcp:microsoft-learn:*",
-      "Mcp:shortcut:*",
+      "mcp__plugin_context7_context7__*",
+      "mcp__plugin_microsoft-docs_microsoft-learn__*",
+      "mcp__shortcut__*",
       "WebFetch",
       "WebSearch",
       "Bash(ls *)",
@@ -62,6 +62,7 @@
       "Bash(cat *)"
     ]
   },
+  "model": "sonnet",
   "hooks": {
     "SessionStart": [
       {
@@ -130,7 +131,15 @@
     "superpowers@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
     "document-skills@anthropic-agent-skills": true,
-    "ruby-lsp@claude-plugins-official": true
+    "ruby-lsp@claude-plugins-official": true,
+    "general@huntress": true,
+    "shortcut@huntress": true,
+    "pyright-lsp@claude-plugins-official": true,
+    "infra@huntress": true,
+    "infra-helm-ls@huntress": true,
+    "infra-terraform-ls@huntress": true,
+    "infra-yaml-ls@huntress": true,
+    "ponytail@ponytail": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -143,6 +152,18 @@
       "source": {
         "source": "github",
         "repo": "anthropics/skills"
+      }
+    },
+    "huntress": {
+      "source": {
+        "source": "github",
+        "repo": "huntresslabs/ai-skills"
+      }
+    },
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail"
       }
     }
   },
@@ -173,12 +194,14 @@
       "docker",
       "gh",
       "uv",
-      "pytest"
+      "pytest",
+      "ssh",
+      "git"
     ],
     "autoAllow": true
   },
-  "effortLevel": "high",
   "skipDangerousModePermissionPrompt": true,
+  "skipWorkflowUsageWarning": true,
   "editorMode": "vim",
   "skipAutoPermissionPrompt": true
 }

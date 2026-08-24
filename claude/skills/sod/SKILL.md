@@ -6,7 +6,7 @@ allowed-tools: Bash(gh *), Glob, Read, Write, Edit, mcp__glean_claude-code__sear
 
 # Start-of-Day Plan
 
-Generate a prioritized daily plan and seed the day's Obsidian daily note by gathering overnight incidents, meetings, open PR reviews, Slack requests, and carryover TODOs. Present a draft for review, then write the daily note.
+Generate a prioritized daily plan and seed the day's Obsidian daily note by gathering overnight incidents, open PR reviews, Slack requests, and carryover TODOs. Present a draft for review, then write the daily note.
 
 **Vault root:** `/Users/luke.snyder/code/Vaults/Work`
 **Daily note path:** `Daily notes/YYYY/MM-<Month>/YYYY-MM-DD.md` (use today's date, e.g., `Daily notes/2026/03-March/2026-03-31.md`)
@@ -26,11 +26,20 @@ Find the most recent daily note to establish the "overnight" cutoff:
 
 Gather data from all sources in parallel. Each source is independent — if one fails, note it and continue with the others.
 
+**IMPORTANT — Glean must be called directly:** Never delegate Glean searches to a subagent. Always call `mcp__glean_claude-code__search` yourself in the main session. Subagents have fabricated results in the past. Use the dedicated `app`, `channel`, and `after` parameters — do not embed these as keywords in the `query` string, as that interferes with Glean's faceted search.
+
+**Verify results before including them:** Glean Slack results should have real channel IDs (e.g. `C03TRM93V0C`), real message URLs, and genuine snippet text. If a result looks generic or placeholder-ish, discard it rather than including it in the plan.
+
 ### 1a. Overnight Incidents (Glean -> Slack #incidents)
 
-Call `mcp__glean_claude-code__search` with query: `app:slack channel:#incidents after:CUTOFF_DATE`
+Call `mcp__glean_claude-code__search` with these parameters:
+- `query`: `*`
+- `app`: `slack`
+- `channel`: `incidents`
+- `after`: CUTOFF_DATE
+- `sort_by_recency`: `true`
 
-Parse the structured incident message format:
+Parse the structured incident message format from the returned snippets:
 - Severity (SEV-1 through SEV-4)
 - Title/description from "New Incident:" line
 - Reporter from "Reporter:" line
@@ -41,29 +50,15 @@ Parse the structured incident message format:
 
 After retrieving results, filter out any incidents where the Status field is "Resolved" — only include active/investigating incidents. Sort by severity (SEV-1 first).
 
-If unavailable: record `"Incidents: unavailable"` and continue.
+If unavailable or no results: record `"Incidents: unavailable"` and continue.
 
-### 1b. Meetings Today (Glean -> Google Calendar)
-
-Call `mcp__glean_claude-code__search` with query: `app:calendar updated:today`
-
-For each event, record:
-- Start time (24h format)
-- Meeting title
-- Key attendees (if available)
-- Whether the user is the organizer or presenter
-
-Sort chronologically.
-
-If unavailable: record `"Calendar: unavailable"` and continue.
-
-### 1c. Open PR Reviews (GitHub CLI)
+### 1b. Open PR Reviews (GitHub CLI)
 
 Run these `gh` commands (scoped to `huntresslabs` org):
 
 1. PRs where review is requested:
    ```bash
-   gh search prs --review-requested @me --state open --owner huntresslabs --json number,title,repository,url,createdAt --limit 50
+   gh search prs --review-requested @me --state open --draft=false --owner huntresslabs --json number,title,repository,url,createdAt --limit 50
    ```
 
 2. PRs authored by user still open:
@@ -71,31 +66,37 @@ Run these `gh` commands (scoped to `huntresslabs` org):
    gh search prs --author @me --state open --owner huntresslabs --json number,title,repository,url,createdAt --limit 50
    ```
 
+Draft PRs are excluded from the review-requested list (`--draft=false`) — they are not reviewable yet. The user's own drafts stay in their open-PR list.
+
 Categorize:
 - **Review requested**: PRs where your review is blocking someone else
 - **Your open PRs**: PRs you authored that are still open (informational)
 
 If `gh` errors or is unavailable, record: `"GitHub: unavailable"` and continue.
 
-### 1d. Slack Requests (Glean -> Slack)
+### 1c. Slack Requests (Glean -> Slack)
 
-Call `mcp__glean_claude-code__search` with query: `app:slack to:"Luke Snyder" after:CUTOFF_DATE`
+Call `mcp__glean_claude-code__search` with these parameters:
+- `query`: `luke`
+- `app`: `slack`
+- `after`: CUTOFF_DATE
+- `sort_by_recency`: `true`
+- `num_results`: `15`
 
-Also search: `app:slack @luke after:CUTOFF_DATE`
+Only include messages where someone else is directing a request, question, or action item at Luke. Discard messages where Luke is the author, casual social conversation, and any result whose channel name or URL looks fabricated.
 
-Scan for request patterns: "can you", "could you", "would you mind", "do you know", action items.
+For each genuine result:
+- Record the real channel name and URL from the result metadata
+- Quote the actual snippet text — do not paraphrase or invent
 
-For each relevant result:
-- Record the channel or DM context
-- Summarize the request in one line
+If unavailable or no actionable results: record `"Slack: unavailable"` and continue.
 
-Filter out outbound-only channels.
+### 1d. Overnight Emails (Glean -> Gmail)
 
-If unavailable: record `"Slack: unavailable"` and continue.
-
-### 1e. Overnight Emails (Glean -> Gmail)
-
-Call `mcp__glean_claude-code__search` with query: `app:gmail after:CUTOFF_DATE` and `type` set to `email`.
+Call `mcp__glean_claude-code__search` with these parameters:
+- `query`: `*`
+- `app`: `gmail`
+- `after`: CUTOFF_DATE
 
 For each email, record:
 - Subject line
@@ -115,7 +116,7 @@ Exclude:
 
 If unavailable or no relevant results: record `"Email: unavailable"` and continue.
 
-### 1f. TODO.md
+### 1e. TODO.md
 
 1. Read `Vaults/Work/TODO.md`
 2. Extract items from:
@@ -124,7 +125,7 @@ If unavailable or no relevant results: record `"Email: unavailable"` and continu
    - `## Waiting` — informational only, not actionable
 3. Preserve full markdown including wiki links and tags.
 
-### 1g. Previous Daily Note Carryover
+### 1f. Previous Daily Note Carryover
 
 1. Read the most recent daily note (identified in Step 0).
 2. Extract all unchecked `- [ ]` items from any section.
@@ -132,7 +133,7 @@ If unavailable or no relevant results: record `"Email: unavailable"` and continu
 
 ### All Sources Check
 
-If ALL data sources returned unavailable or empty results (no incidents, no calendar events, no PRs, no Slack requests, no emails, TODO.md is empty, and no carryover items), report to the user:
+If ALL data sources returned unavailable or empty results (no incidents, no PRs, no Slack requests, no emails, TODO.md is empty, and no carryover items), report to the user:
 > "All data sources returned empty or unavailable. Nothing to plan today."
 
 Stop here — do not proceed to synthesis.
@@ -188,19 +189,12 @@ Draft sections (omit any section that has no data):
 - :large_orange_circle: SEV-2: Title — Status — #tmp-incident-channel
 - :large_yellow_circle: SEV-3: Title — Status — #tmp-incident-channel
 - :large_green_circle: SEV-4: Title — Status — #tmp-incident-channel
-
-## Meetings
-### HH:MM — Meeting Title
-- Agenda:  ← only include if user is the organizer or presenter
-- Notes:
-- Action items:
 ```
 
 **Section purposes:**
 - `## Plan` is the prioritized action list — incidents appear here as action items (e.g., "SEV-3 incident: Title (incident)")
 - `## Incidents` is a reference section with full structured details (severity, status, channel link) — supplements the plan item, not a duplicate
 - `## Your Open PRs` is informational only — these are NOT in the plan unless they need action (rebasing, review comments)
-- `## Meetings` provides scaffolding for note-taking throughout the day
 
 If any data sources were unavailable, note this at the top:
 > **Note:** The following sources were unavailable: [list]. Data from these sources is not included.
@@ -214,9 +208,9 @@ Present the draft, then immediately proceed to Step 4 — do not wait for user a
 **Path:** `/Users/luke.snyder/code/Vaults/Work/Daily notes/YYYY/MM-<Month>/YYYY-MM-DD.md` (e.g., `Daily notes/2026/03-March/2026-03-31.md`). Create parent directories if they don't exist.
 
 - If the file does not exist, create it with the draft content.
-- If the file already exists and already contains a `## Plan` section (from a previous SOD run today), replace the existing Plan, Incidents, and Meetings sections with the new content.
+- If the file already exists and already contains a `## Plan` section (from a previous SOD run today), replace the existing Plan and Incidents sections with the new content.
 - If the file already exists without a `## Plan` section, merge the new content:
-  - For each section (`## Plan`, `## Incidents`, `## Meetings`, etc.):
+  - For each section (`## Plan`, `## Incidents`, etc.):
     - If the section heading already exists in the file, append new items below existing items in that section.
     - If the section heading does not exist, add the section at the appropriate position in the file.
   - Never overwrite or remove existing content.
@@ -229,7 +223,6 @@ Use these conventions throughout all written content:
 - PR links: `[repo#number](url)`
 - Shortcut story links as URLs: `[SC-12345](https://app.shortcut.com/huntress/story/12345)`
 - Note links: `[[Tailscale]]`, `[[elasticsearch]]`, etc.
-- Meeting times in 24h format: `10:00 — Meeting title`
 - Incident severity: emoji prefix matching Slack conventions
   - `:large_red_circle:` SEV-1
   - `:large_orange_circle:` SEV-2
@@ -239,4 +232,4 @@ Use these conventions throughout all written content:
 ### Completion
 
 After writing all files, confirm to the user:
-> "Morning plan written to `Daily notes/YYYY-MM-DD.md`. [N] plan items, [N] meetings scaffolded."
+> "Morning plan written to `Daily notes/YYYY-MM-DD.md`. [N] plan items."

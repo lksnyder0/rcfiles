@@ -1,7 +1,7 @@
 ---
 name: huntress:pr
 description: Push the current branch and open a draft pull request with the ai-assisted label. Use this skill when you need to push changes and create a PR.
-allowed-tools: Bash(git push:*), Bash(git log:*), Bash(git diff:*), Bash(git status:*), Bash(git branch:*), Bash(git remote:*), Bash(gh pr create:*), Bash(gh pr view:*)
+allowed-tools: Bash(git push:*), Bash(git log:*), Bash(git diff:*), Bash(git status:*), Bash(git branch:*), Bash(git remote:*), Bash(gh pr create:*), Bash(gh pr view:*), Glob, Read, Edit
 ---
 
 ## Context
@@ -44,4 +44,5 @@ Push the current branch and open a pull request.
    EOF
    )"
    ```
-5. Return the PR URL to the user.
+5. If an implementation plan exists for this work (check `Vaults/Work/Plans/` for a file whose topic matches the current branch or task), add the new PR URL to that plan's `prs:` frontmatter field.
+6. Return the PR URL to the user.
