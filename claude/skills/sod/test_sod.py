@@ -424,6 +424,24 @@ class TestCommitments(unittest.TestCase):
         fields["status"] = "done"
         sod.write_note(path, fields, note.get("_body", ""))
 
+    def mark_status(self, path, status):
+        note = sod.read_note(path)
+        fields = {k: v for k, v in note.items() if not k.startswith("_")}
+        fields["status"] = status
+        sod.write_note(path, fields, note.get("_body", ""))
+
+    def test_waiting_status_excluded_from_default_load(self):
+        _, path = self.add(link="l1", title="Blocked on someone")
+        self.mark_status(path, "waiting")
+        self.add(link="l2", title="Still open")
+        self.assertEqual([n["title"] for n in sod.load_commitments()], ["Still open"])
+
+    def test_waiting_status_included_with_include_done_true(self):
+        _, path = self.add(link="l1", title="Blocked on someone")
+        self.mark_status(path, "waiting")
+        titles = [n["title"] for n in sod.load_commitments(include_done=True)]
+        self.assertIn("Blocked on someone", titles)
+
     def test_created_note_has_full_schema_and_defaults_status_open(self):
         action, path = self.add()
         self.assertEqual(action, "created")

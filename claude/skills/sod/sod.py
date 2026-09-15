@@ -387,7 +387,7 @@ def load_commitments(include_done=False):
     notes = [read_note(p) for p in sorted(COMMITMENTS_DIR.glob("*.md"))]
     notes = [n for n in notes if n.get("link")]
     if not include_done:
-        notes = [n for n in notes if n.get("status", "open") != "done"]
+        notes = [n for n in notes if n.get("status", "open") == "open"]
     return notes
 
 
