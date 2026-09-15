@@ -131,11 +131,87 @@ def sh(args):
     return subprocess.run(args, check=True, capture_output=True, text=True).stdout
 
 
+# --- PR REVIEW BACKLOG -------------------------------------------------------
+# Four selection criteria, merged and deduped by (repo, number). "Assigned
+# directly to me" is GitHub's `assignee` — never `author`, and never
+# `review-requested`, which the two team criteria already cover.
+
+PR_FIELDS = "number,title,url,createdAt,isDraft"
+
+PR_QUERIES = [
+    ("assignee", True, [
+        "gh", "search", "prs", "--assignee", "@me", "--state", "open",
+        "--owner", "huntresslabs", "--json", PR_FIELDS + ",repository",
+        "--limit", "100"]),
+    ("team:infrastructure-sre", False, [
+        "gh", "search", "prs", "--review-requested", "huntresslabs/infrastructure-sre",
+        "--state", "open", "--owner", "huntresslabs",
+        "--json", PR_FIELDS + ",repository", "--limit", "100"]),
+    ("team:idex", False, [
+        "gh", "search", "prs", "--review-requested", "huntresslabs/idex",
+        "--state", "open", "--owner", "huntresslabs",
+        "--json", PR_FIELDS + ",repository", "--limit", "100"]),
+    ("repo:infra-elastic", False, [
+        "gh", "pr", "list", "--repo", "huntresslabs/infra-elastic",
+        "--state", "open", "--json", PR_FIELDS, "--limit", "100"]),
+]
+
+
+def gh_json(args):
+    return json.loads(sh(args) or "[]")
+
+
+def collect_prs():
+    merged = {}
+    for reason, keep_drafts, args in PR_QUERIES:
+        for raw in gh_json(args):
+            if raw.get("isDraft") and not keep_drafts:
+                continue
+            # `gh pr list` omits the repository field; that query is repo-scoped.
+            repo = (raw.get("repository") or {}).get("nameWithOwner") \
+                or "huntresslabs/infra-elastic"
+            row = merged.setdefault((repo, raw["number"]), {
+                "repo": repo,
+                "number": raw["number"],
+                "title": raw["title"],
+                "url": raw["url"],
+                "created_at": parse_date(raw["createdAt"]),
+                "is_draft": bool(raw.get("isDraft")),
+                "reasons": set(),
+            })
+            row["reasons"].add(reason)
+    prs = sorted(merged.values(), key=lambda p: (p["created_at"], p["repo"], p["number"]))
+    for pr in prs:
+        pr["reasons"] = sorted(pr["reasons"])
+    return prs
+
+
+def render_prs(prs):
+    if not prs:
+        return "_No open PRs matching the backlog criteria._"
+    lines = ["| PR | Title | Opened | Why |", "| --- | --- | --- | --- |"]
+    for pr in prs:
+        short_repo = pr["repo"].split("/", 1)[1]
+        draft = " *(draft)*" if pr["is_draft"] else ""
+        title = pr["title"].replace("|", "\\|")
+        lines.append(
+            f"| [{short_repo}#{pr['number']}]({pr['url']}){draft} | {title} "
+            f"| {pr['created_at']} | {', '.join(pr['reasons'])} |"
+        )
+    return "\n".join(lines)
+
+
+def cmd_prs():
+    return render_prs(collect_prs())
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="sod")
-    parser.add_subparsers(dest="cmd", required=True)
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("prs", help="render the PR REVIEW BACKLOG table")
     args = parser.parse_args(argv)
-    raise SystemExit(f"unknown command: {args.cmd}")
+    if args.cmd == "prs":
+        print(cmd_prs())
 
 
 if __name__ == "__main__":
