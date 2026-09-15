@@ -138,7 +138,7 @@ Useful when something looks wrong:
 
 | Section | Mechanism |
 |---|---|
-| IMPORTANT TODAY/THIS WEEK | Script-rendered. Merges open commitments, PROJECT WORK **stories only** (never epics), and unindented `- [ ]` items under `## Today`/`## Backlog` in `TODO.md`. Four bands: **overdue** (any source) → **started** stories by closest due date → **unstarted** stories by complexity → **everything else** by `due_date asc, complexity asc`. `backlog` stories are excluded entirely. Top 5. |
+| IMPORTANT TODAY/THIS WEEK | Script-rendered. Merges open commitments, PROJECT WORK **stories only** (never epics), and unindented `- [ ]` items under `## Today`/`## Backlog` in `TODO.md`. Four bands: **overdue** (any source) → **started** stories by closest due date → **unstarted** stories by complexity → **everything else** by `due_date asc, complexity asc`. `backlog` stories are excluded entirely. A TODO already migrated into a commitment is skipped, so it counts once. Top 5. |
 | OPEN COMMITMENTS | Base embed, `![[Commitments.base#Daily Note View]]`. Filters `status == "open"`, sorts by `sort_key` alone. Mark one done by toggling `status` to `done` inline in the Base — no script needed. |
 | PR REVIEW BACKLOG | Script-rendered from four `gh` criteria: assigned to me, review-requested for `huntresslabs/infrastructure-sre`, review-requested for `huntresslabs/idex`, and every open PR in `huntresslabs/infra-elastic`. Deduped by repo + number, sorted oldest-first. Drafts are excluded except when assigned directly to me. |
 | PROJECT WORK | Base embed, `![[Project Work.base#Daily Note View]]`. Grouped by epic, sorted by `sort_key` alone. Within an epic, stories that block another story render first. |
@@ -148,6 +148,31 @@ Both Bases sort by a precomputed integer `sort_key` because Obsidian Bases canno
 The banding exists because Shortcut estimates and deadlines are mostly unset in practice: ranking undated stories on `due_date`/`complexity` alone collapses to story id. Overdue still wins outright from any source, so nothing you promised can be buried. Inside bands 2 and 3, `due_date` and `complexity` still order the work — if estimates get filled in later they take effect automatically, no change needed.
 
 `backlog` stories are dropped because they need shaping before they can be finished. A story with a missing or unrecognised state type is **not** dropped — it lands in band 3 behind real unstarted work. Band membership reads the workflow state `type`, never the name, same as the done-check.
+
+## Migrating a TODO into a commitment
+
+`TODO.md` stays the capture inbox; anything that becomes a real commitment moves into the Base. `sod.py todos` lists open root TODOs with their `todo://` row keys, their due dates, and their sub-bullets:
+
+```bash
+python3 ~/.claude/skills/sod/sod.py todos
+```
+
+To migrate one, pass its `todo://` key as `--link` and its sub-bullets as `--body`:
+
+```bash
+python3 ~/.claude/skills/sod/sod.py commit-add \
+  --title "Check back on the process ILM cold tier prediction" \
+  --summary "Verify the predictions from the cold-tier rebalance design." \
+  --link "todo://check-back-on-the-process-ilm-cold-tier-prediction-due-2026-10-12-elasticsearch" \
+  --committed-date 2026-09-14 --due-date 2026-10-12 \
+  --complexity medium --tags elasticsearch,ilm,threat-hunting \
+  --body "- [ ] Confirm cold tier peak lands near 73%
+- [ ] Re-fit the growth trend"
+```
+
+**Leave the item in `TODO.md`.** The `todo://` key is derived from the raw TODO text, so IMPORTANT TODAY recognises it as migrated and counts it once — via the commitment, not the TODO. That holds even after the commitment is marked `done`, and even if you retitle the commitment. Deleting the TODO line would work too, but then the key stops matching and nothing dedups it, so don't edit the line's text.
+
+Sub-bullets belong in the body, not the schema — they are notes, not fields. Completed sub-bullets are worth carrying across as context.
 
 ## Tests
 

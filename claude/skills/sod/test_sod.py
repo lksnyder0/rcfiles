@@ -500,6 +500,26 @@ class TestCommitments(unittest.TestCase):
         ranked = [n["title"] for n in sod.load_commitments()]
         self.assertEqual(ranked, ["Stays open and unrelated"])
 
+    def test_custom_body_is_written_and_default_is_the_source_link(self):
+        """Migrated TODO sub-bullets live in the note body, not the schema."""
+        action, path = self.add(link="https://slack/withbody",
+                               title="Parent item with checks",
+                               body="- [ ] First check\n- [x] Second check")
+        self.assertEqual(action, "created")
+        body = sod.read_note(path)["_body"]
+        self.assertIn("- [ ] First check", body)
+        self.assertIn("- [x] Second check", body)
+
+        _, plain = self.add(link="https://slack/nobody", title="Plain item")
+        self.assertIn("https://slack/nobody", sod.read_note(plain)["_body"])
+
+    def test_body_is_preserved_across_sort_key_recomputation(self):
+        _, path = self.add(link="https://slack/keepbody",
+                           title="Item whose body must survive",
+                           body="- [ ] A sub task worth keeping")
+        sod.cmd_commitments(ref=dt.date(2026, 9, 15))
+        self.assertIn("A sub task worth keeping", sod.read_note(path)["_body"])
+
     def test_training_email_uses_the_same_schema(self):
         action, path = sod.upsert_commitment(
             title="Complete annual security awareness training",
@@ -606,6 +626,91 @@ class TestImportant(unittest.TestCase):
     def test_todo_inline_due_date_is_parsed(self):
         self.todos("## Backlog\n- [ ] Check the ILM prediction — due [[2026-09-02]]\n")
         self.assertEqual(sod.load_todos()[0]["due_date"], "2026-09-02")
+
+    def test_children_attach_to_their_root_regardless_of_indent_style(self):
+        """Live TODO.md mixes tab-indented and two-space-indented sub-bullets.
+        Both are children; neither is a root item."""
+        self.todos(
+            "## Backlog\n"
+            "- [ ] Tab parent\n"
+            "\t- [ ] Tab child one\n"
+            "\t- [ ] Tab child two\n"
+            "- [ ] Space parent\n"
+            "  - [ ] Space child one\n"
+            "  - [ ] Space child two\n")
+        todos = sod.load_todos()
+        self.assertEqual([t["label"] for t in todos], ["Tab parent", "Space parent"])
+        self.assertEqual(todos[0]["children"], ["- [ ] Tab child one",
+                                                "- [ ] Tab child two"])
+        self.assertEqual(todos[1]["children"], ["- [ ] Space child one",
+                                                "- [ ] Space child two"])
+
+    def test_completed_children_are_kept_as_body_context(self):
+        """A done sub-bullet is history worth carrying into the commitment."""
+        self.todos("## Backlog\n- [ ] Parent\n\t- [x] Already verified\n"
+                   "\t- [ ] Still open\n")
+        self.assertEqual(sod.load_todos()[0]["children"],
+                         ["- [x] Already verified", "- [ ] Still open"])
+
+    def test_root_with_no_children_has_empty_list(self):
+        self.todos("## Backlog\n- [ ] Lonely item\n")
+        self.assertEqual(sod.load_todos()[0]["children"], [])
+
+    def test_children_of_a_completed_root_do_not_graft_onto_the_previous_item(self):
+        self.todos("## Backlog\n"
+                   "- [ ] Open item\n"
+                   "- [x] Completed item\n"
+                   "\t- [ ] Child of the completed item\n")
+        todos = sod.load_todos()
+        self.assertEqual([t["label"] for t in todos], ["Open item"])
+        self.assertEqual(todos[0]["children"], [])
+
+    def test_blank_line_inside_a_group_does_not_end_it(self):
+        self.todos("## Backlog\n- [ ] Parent\n\n\t- [ ] Child after a blank\n")
+        self.assertEqual(sod.load_todos()[0]["children"],
+                         ["- [ ] Child after a blank"])
+
+    def test_todo_link_is_stable_and_unique_per_item(self):
+        a = sod.todo_link("Watch ACNS flow logs for the portal namespace")
+        b = sod.todo_link("Watch ACNS flow logs for the portal namespace")
+        c = sod.todo_link("Merge the production portal network-policy PR")
+        self.assertEqual(a, b)
+        self.assertNotEqual(a, c)
+        self.assertTrue(a.startswith("todo://"))
+
+    def test_todo_link_survives_retitling(self):
+        """Dedup keys off the raw TODO text, so the commitment can be retitled
+        freely without the migration re-creating it."""
+        raw = "**Remove `portal-app-egress-catchall`** from staging + production"
+        self.assertEqual(sod.todo_link(raw), sod.todo_link(raw))
+        self.assertNotIn("*", sod.todo_link(raw))
+
+    def test_migrated_todo_is_not_double_counted(self):
+        """TODO.md is left intact after migration, so a TODO that already has a
+        commitment must not appear twice in the pool."""
+        raw = "Finish Huntress Community Apps ADR"
+        self.todos(f"## Backlog\n- [ ] {raw}\n- [ ] Not yet migrated\n")
+        sod.upsert_commitment(title="Finish the Community Apps ADR",
+                              summary="Migrated from TODO.md.",
+                              link=sod.todo_link(raw),
+                              committed_date="2026-09-15", complexity="medium")
+        labels = self.labels()
+        self.assertEqual(labels.count("Finish the Community Apps ADR"), 1)
+        self.assertNotIn(raw, labels)
+        self.assertIn("Not yet migrated", labels)
+
+    def test_dedup_ignores_a_done_commitment(self):
+        """Completing the commitment must not silently resurrect the TODO."""
+        raw = "Finish Huntress Community Apps ADR"
+        self.todos(f"## Backlog\n- [ ] {raw}\n")
+        _, path = sod.upsert_commitment(
+            title="Finish the ADR", summary="s", link=sod.todo_link(raw),
+            committed_date="2026-09-15", complexity="medium")
+        note = sod.read_note(path)
+        fields = {k: v for k, v in note.items() if not k.startswith("_")}
+        fields["status"] = "done"
+        sod.write_note(path, fields, note.get("_body", ""))
+        self.assertEqual(self.labels(), [])
 
     def test_todo_with_overdue_inline_date_outranks_future_commitment(self):
         self.todos("## Today\n- [ ] Overdue todo — due [[2026-09-01]]\n")
