@@ -922,5 +922,44 @@ class TestTodoAdd(unittest.TestCase):
         self.assertEqual(len(sod.load_commitments()), 1)
 
 
+class TestTodoList(unittest.TestCase):
+    REF = dt.date(2026, 9, 15)
+
+    def setUp(self):
+        sod.COMMITMENTS_DIR = Path(tempfile.mkdtemp())
+
+    def add(self, title, status="open", due_date=None, complexity=None):
+        sod.write_note(sod.COMMITMENTS_DIR / f"{sod.slugify(title)}.md", {
+            "title": title, "committed_date": "2026-09-01", "due_date": due_date,
+            "complexity": complexity, "tags": [], "summary": "s",
+            "link": f"todo://{sod.slugify(title)}", "status": status, "sort_key": 0})
+
+    def test_default_status_is_open_and_sorted_overdue_first(self):
+        self.add("Overdue one", due_date="2026-09-01", complexity="high")
+        self.add("Future one", due_date="2026-09-30", complexity="low")
+        self.add("Waiting one", status="waiting")
+        out = sod.cmd_todo_list(status="open", ref=self.REF)
+        self.assertEqual(out.splitlines(), [
+            "1. Overdue one (open, due 2026-09-01, high)",
+            "2. Future one (open, due 2026-09-30, low)",
+        ])
+
+    def test_status_all_includes_everything(self):
+        self.add("Open one")
+        self.add("Waiting one", status="waiting")
+        self.add("Done one", status="done")
+        out = sod.cmd_todo_list(status="all", ref=self.REF)
+        self.assertEqual(len(out.splitlines()), 3)
+
+    def test_status_waiting_filters_to_waiting_only(self):
+        self.add("Open one")
+        self.add("Waiting one", status="waiting")
+        out = sod.cmd_todo_list(status="waiting", ref=self.REF)
+        self.assertEqual(out.splitlines(), ["1. Waiting one (waiting)"])
+
+    def test_empty_list_renders_placeholder(self):
+        self.assertIn("_No matching todos", sod.cmd_todo_list(status="open", ref=self.REF))
+
+
 if __name__ == "__main__":
     unittest.main()

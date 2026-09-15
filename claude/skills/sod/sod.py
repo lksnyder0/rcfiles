@@ -491,6 +491,33 @@ def cmd_todo_add(args):
     return f"{action}: {path}"
 
 
+def commitments_by_status(status="open"):
+    notes = load_commitments(include_done=True)
+    if status == "all":
+        return notes
+    return [n for n in notes if n.get("status", "open") == status]
+
+
+def render_todo_list(notes):
+    if not notes:
+        return "_No matching todos._"
+    lines = []
+    for index, note in enumerate(notes, start=1):
+        bits = [note.get("status", "open")]
+        if note.get("due_date"):
+            bits.append(f"due {note['due_date']}")
+        if note.get("complexity"):
+            bits.append(note["complexity"])
+        lines.append(f"{index}. {note.get('title', '')} ({', '.join(bits)})")
+    return "\n".join(lines)
+
+
+def cmd_todo_list(status="open", ref=None):
+    ref = ref or today()
+    notes = sorted(commitments_by_status(status), key=lambda n: commitment_sort_tuple(n, ref))
+    return render_todo_list(notes)
+
+
 # --- IMPORTANT TODAY/THIS WEEK -----------------------------------------------
 # Merges the two Bases with active TODOs, so it cannot be a Base query. Only
 # stories are eligible from PROJECT WORK: an epic is not an atomic item that
@@ -773,6 +800,8 @@ def main(argv=None):
     ta.add_argument("--due-date", dest="due_date")
     ta.add_argument("--complexity", choices=["low", "medium", "high"])
     ta.add_argument("--tags", default="", help="comma-separated")
+    tl = sub.add_parser("todo-list", help="list self-directed tasks")
+    tl.add_argument("--status", choices=["open", "waiting", "done", "all"], default="open")
     sub.add_parser("todos", help="list open root TODOs with their todo:// keys")
     imp = sub.add_parser("important", help="render IMPORTANT TODAY/THIS WEEK")
     imp.add_argument("--limit", type=int, default=5)
@@ -789,6 +818,8 @@ def main(argv=None):
         print(cmd_commit_add(args))
     elif args.cmd == "todo-add":
         print(cmd_todo_add(args))
+    elif args.cmd == "todo-list":
+        print(cmd_todo_list(status=args.status))
     elif args.cmd == "important":
         print(cmd_important(limit=args.limit))
     elif args.cmd == "todos":
