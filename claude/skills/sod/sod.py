@@ -481,6 +481,99 @@ def cmd_commit_add(args):
     return f"{action}: {path}"
 
 
+# --- IMPORTANT TODAY/THIS WEEK -----------------------------------------------
+# Merges the two Bases with active TODOs, so it cannot be a Base query. Only
+# stories are eligible from PROJECT WORK: an epic is not an atomic item that
+# could be finished this week.
+
+TODO_SECTIONS = ("Today", "Backlog")
+TODO_DUE_RE = re.compile(r"due\s*\[\[(\d{4}-\d{2}-\d{2})\]\]")
+SOURCE_RANK = {"commitment": 0, "project": 1, "todo": 2}
+
+
+def load_todos():
+    """Unindented open checkboxes under ## Today / ## Backlog. Sub-items are
+    skipped: they are implementation detail and would flood the pool."""
+    if not TODO_PATH.exists():
+        return []
+    section, todos = None, []
+    for line in TODO_PATH.read_text().splitlines():
+        heading = re.match(r"^##\s+(.+?)\s*$", line)
+        if heading:
+            section = heading[1]
+            continue
+        if section not in TODO_SECTIONS:
+            continue
+        if not line.startswith("- [ ] "):
+            continue
+        text = line[6:].strip()
+        due = TODO_DUE_RE.search(text)
+        todos.append({"label": text, "due_date": due[1] if due else None,
+                      "complexity": None})
+    return todos
+
+
+def load_project_stories():
+    if not PROJECT_DIR.exists():
+        return []
+    notes = [read_note(p) for p in sorted(PROJECT_DIR.glob("*.md"))]
+    return [n for n in notes if n.get("type") == "story"]
+
+
+def important_pool(ref=None):
+    ref = ref or today()
+    pool = []
+    for note in load_commitments():
+        pool.append({"label": note.get("title", ""), "source": "commitment",
+                     "due_date": note.get("due_date"),
+                     "complexity": note.get("complexity"),
+                     "link": note.get("link")})
+    for note in load_project_stories():
+        pool.append({"label": note.get("title", ""), "source": "project",
+                     "due_date": note.get("due_date"),
+                     "complexity": note.get("complexity"),
+                     "link": note.get("link")})
+    for todo in load_todos():
+        pool.append({"label": todo["label"], "source": "todo",
+                     "due_date": todo["due_date"], "complexity": None,
+                     "link": None})
+
+    def key(item):
+        due = parse_date(item["due_date"])
+        if due is None:
+            tier = 2
+        elif due < ref:
+            tier = 0
+        else:
+            tier = 1
+        return (tier, due or FAR_FUTURE,
+                complexity_rank(item["complexity"]), SOURCE_RANK[item["source"]])
+
+    for item in pool:
+        due = parse_date(item["due_date"])
+        item["overdue"] = bool(due and due < ref)
+    return sorted(pool, key=key)
+
+
+def render_important(items):
+    if not items:
+        return "_Nothing ranked — commitments, project work, and TODOs are all empty._"
+    lines = []
+    for item in items:
+        bits = [item["source"]]
+        if item["due_date"]:
+            bits.append(("overdue " if item["overdue"] else "due ") + item["due_date"])
+        if item["complexity"]:
+            bits.append(item["complexity"])
+        label = f"[{item['label']}]({item['link']})" if item["link"] else item["label"]
+        lines.append(f"- [ ] {label} ({', '.join(bits)})")
+    return "\n".join(lines)
+
+
+def cmd_important(ref=None, limit=5):
+    return render_important(important_pool(ref)[:limit])
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="sod")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -495,6 +588,8 @@ def main(argv=None):
     add.add_argument("--due-date", dest="due_date")
     add.add_argument("--complexity", choices=["low", "medium", "high"])
     add.add_argument("--tags", default="", help="comma-separated")
+    imp = sub.add_parser("important", help="render IMPORTANT TODAY/THIS WEEK")
+    imp.add_argument("--limit", type=int, default=5)
     args = parser.parse_args(argv)
     if args.cmd == "prs":
         print(cmd_prs())
@@ -504,6 +599,8 @@ def main(argv=None):
         print(cmd_commitments())
     elif args.cmd == "commit-add":
         print(cmd_commit_add(args))
+    elif args.cmd == "important":
+        print(cmd_important(limit=args.limit))
 
 
 if __name__ == "__main__":

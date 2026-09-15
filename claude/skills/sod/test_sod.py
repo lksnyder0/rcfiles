@@ -491,5 +491,110 @@ class TestCommitments(unittest.TestCase):
         self.assertEqual(note["committed_date"], "2026-09-12")
 
 
+class TestImportant(unittest.TestCase):
+    REF = dt.date(2026, 9, 15)
+
+    def setUp(self):
+        root = Path(tempfile.mkdtemp())
+        sod.COMMITMENTS_DIR = root / "Commitments"
+        sod.PROJECT_DIR = root / "Project Work"
+        sod.TODO_PATH = root / "TODO.md"
+        sod.COMMITMENTS_DIR.mkdir(parents=True)
+        sod.PROJECT_DIR.mkdir(parents=True)
+        sod.TODO_PATH.write_text("## Today\n\n## Backlog\n\n## Waiting\n\n## Done\n")
+
+    def commitment(self, title, due, complexity, status="open"):
+        sod.write_note(sod.COMMITMENTS_DIR / f"{sod.slugify(title)}.md", {
+            "title": title, "committed_date": "2026-09-01", "due_date": due,
+            "complexity": complexity, "tags": [], "summary": "s",
+            "link": f"https://slack/{sod.slugify(title)}",
+            "status": status, "sort_key": 0})
+
+    def row(self, kind, rid, title, due, complexity):
+        sod.write_note(sod.PROJECT_DIR / f"{kind}-{rid}.md", {
+            "type": kind, "id": rid, "title": title, "state": "In Progress",
+            "epic_id": None, "created_at": "2026-09-01", "due_date": due,
+            "complexity": complexity, "blocker": False,
+            "link": f"https://app.shortcut.com/huntress/{kind}/{rid}",
+            "epic_group": "00 — E", "sort_key": 0})
+
+    def todos(self, body):
+        sod.TODO_PATH.write_text(body)
+
+    def labels(self, limit=5):
+        return [i["label"] for i in sod.important_pool(self.REF)][:limit]
+
+    def test_tiers_render_overdue_then_dated_then_undated(self):
+        self.commitment("Overdue commitment", "2026-09-01", "high")
+        self.commitment("Future commitment", "2026-09-30", "low")
+        self.row("story", 1, "Undated story", None, "low")
+        self.assertEqual(self.labels(), ["Overdue commitment",
+                                         "Future commitment",
+                                         "Undated story"])
+
+    def test_missing_complexity_sorts_last_within_tier(self):
+        self.row("story", 1, "Undated story no estimate", None, None)
+        self.row("story", 2, "Undated story low", None, "low")
+        self.todos("## Today\n- [ ] A plain todo\n")
+        labels = self.labels()
+        self.assertEqual(labels[0], "Undated story low")
+        self.assertIn("Undated story no estimate", labels)
+        self.assertIn("A plain todo", labels)
+        # Both lack complexity, so source order decides: story before todo.
+        self.assertLess(labels.index("Undated story no estimate"),
+                        labels.index("A plain todo"))
+
+    def test_tie_on_due_date_and_complexity_breaks_by_source_order(self):
+        self.commitment("Tied commitment", "2026-09-20", "medium")
+        self.row("story", 1, "Tied story", "2026-09-20", "medium")
+        self.assertEqual(self.labels()[:2], ["Tied commitment", "Tied story"])
+
+    def test_epic_never_eligible_even_with_the_earliest_due_date(self):
+        self.row("epic", 100, "Epic due tomorrow", "2026-09-16", None)
+        self.row("story", 1, "Story due much later", "2026-12-01", "high")
+        labels = self.labels()
+        self.assertNotIn("Epic due tomorrow", labels)
+        self.assertEqual(labels, ["Story due much later"])
+
+    def test_done_commitment_excluded(self):
+        self.commitment("Done thing", "2026-09-01", "low", status="done")
+        self.commitment("Open thing", "2026-09-02", "low")
+        self.assertEqual(self.labels(), ["Open thing"])
+
+    def test_todos_only_top_level_from_today_and_backlog(self):
+        self.todos(
+            "## Today\n- [ ] Top level today\n\t- [ ] Nested child\n"
+            "## Backlog\n- [ ] Top level backlog\n- [x] Already done\n"
+            "## Waiting\n- [ ] Waiting item\n"
+            "## Done\n- [x] Finished\n")
+        labels = [t["label"] for t in sod.load_todos()]
+        self.assertEqual(labels, ["Top level today", "Top level backlog"])
+
+    def test_todo_inline_due_date_is_parsed(self):
+        self.todos("## Backlog\n- [ ] Check the ILM prediction — due [[2026-09-02]]\n")
+        self.assertEqual(sod.load_todos()[0]["due_date"], "2026-09-02")
+
+    def test_todo_with_overdue_inline_date_outranks_future_commitment(self):
+        self.todos("## Today\n- [ ] Overdue todo — due [[2026-09-01]]\n")
+        self.commitment("Future commitment", "2026-09-30", "low")
+        self.assertEqual(self.labels()[0], "Overdue todo — due [[2026-09-01]]")
+
+    def test_limit_is_at_most_five(self):
+        for i in range(9):
+            self.commitment(f"Commitment number {i}", f"2026-09-{i + 1:02d}", "low")
+        rendered = sod.render_important(sod.important_pool(self.REF)[:5])
+        self.assertEqual(len(rendered.strip().splitlines()), 5)
+
+    def test_render_marks_source_and_overdue(self):
+        self.commitment("Overdue commitment", "2026-09-01", "high")
+        out = sod.render_important(sod.important_pool(self.REF)[:5])
+        self.assertIn("- [ ] ", out)
+        self.assertIn("commitment", out.lower())
+        self.assertIn("overdue", out.lower())
+
+    def test_empty_pool_renders_placeholder(self):
+        self.assertIn("_Nothing", sod.render_important([]))
+
+
 if __name__ == "__main__":
     unittest.main()
