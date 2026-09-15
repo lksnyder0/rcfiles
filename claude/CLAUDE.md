@@ -17,6 +17,7 @@ This workflow is mandatory. Do not skip or reorder steps.
 
 - Always create a new git branch before starting any code changes or writing any files. Name the branch descriptively based on the task (e.g., `feat/add-login-page`, `fix/null-pointer-error`). Do not make changes directly on the current branch unless explicitly instructed otherwise.
 - Never commit directly to `main`. Always work on a separate branch and use a pull request workflow.
+- When a change requires edits to both a Helm chart and a values file, split it into separate PRs: one for the values file, one for the chart changes.
 
 ## Specs and Implementation Plans
 
