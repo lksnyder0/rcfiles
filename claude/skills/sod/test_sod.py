@@ -596,5 +596,82 @@ class TestImportant(unittest.TestCase):
         self.assertIn("_Nothing", sod.render_important([]))
 
 
+class TestDailyNote(unittest.TestCase):
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp())
+        sod.DAILY_DIR = self.root / "Daily notes"
+        sod.COMMITMENTS_DIR = self.root / "Commitments"
+        sod.PROJECT_DIR = self.root / "Project Work"
+        sod.TODO_PATH = self.root / "TODO.md"
+        sod.TODO_PATH.write_text("## Today\n- [ ] Something to do\n")
+        self._real = sod.gh_json
+        sod.gh_json = lambda args: []
+
+    def tearDown(self):
+        sod.gh_json = self._real
+
+    def test_path_uses_year_and_month_folders(self):
+        path = sod.daily_note_path(dt.date(2026, 9, 15))
+        self.assertTrue(
+            str(path).endswith("Daily notes/2026/09-September/2026-09-15.md"))
+
+    def test_latest_daily_date_ignores_today_and_falls_back_to_yesterday(self):
+        self.assertIsNone(sod.latest_daily_date(before=dt.date(2026, 9, 15)))
+        older = sod.daily_note_path(dt.date(2026, 9, 12))
+        older.parent.mkdir(parents=True, exist_ok=True)
+        older.write_text("x")
+        sod.daily_note_path(dt.date(2026, 9, 15)).write_text("today")
+        self.assertEqual(sod.latest_daily_date(before=dt.date(2026, 9, 15)),
+                         dt.date(2026, 9, 12))
+
+    def test_all_four_sections_written_in_order(self):
+        sod.cmd_daily_note(day=dt.date(2026, 9, 15))
+        text = sod.daily_note_path(dt.date(2026, 9, 15)).read_text()
+        positions = [text.index(f"## {h}") for h in sod.SECTION_ORDER]
+        self.assertEqual(positions, sorted(positions))
+        self.assertEqual(sod.SECTION_ORDER, [
+            "IMPORTANT TODAY/THIS WEEK", "OPEN COMMITMENTS",
+            "PR REVIEW BACKLOG", "PROJECT WORK"])
+
+    def test_bases_are_embedded_not_rendered(self):
+        sod.cmd_daily_note(day=dt.date(2026, 9, 15))
+        text = sod.daily_note_path(dt.date(2026, 9, 15)).read_text()
+        self.assertIn("![[Commitments.base#Daily Note View]]", text)
+        self.assertIn("![[Project Work.base#Daily Note View]]", text)
+
+    def test_rerun_is_idempotent(self):
+        day = dt.date(2026, 9, 15)
+        sod.cmd_daily_note(day=day)
+        first = sod.daily_note_path(day).read_text()
+        sod.cmd_daily_note(day=day)
+        self.assertEqual(first, sod.daily_note_path(day).read_text())
+
+    def test_rerun_preserves_foreign_sections(self):
+        day = dt.date(2026, 9, 15)
+        sod.cmd_daily_note(day=day)
+        path = sod.daily_note_path(day)
+        path.write_text(path.read_text() + "\n## Completed\n- [x] eod wrote this\n")
+        sod.cmd_daily_note(day=day)
+        text = path.read_text()
+        self.assertIn("## Completed", text)
+        self.assertIn("eod wrote this", text)
+
+    def test_upsert_section_replaces_only_its_own_body(self):
+        text = "## A\nold a\n\n## B\nkeep b\n"
+        out = sod.upsert_section(text, "A", "new a")
+        self.assertIn("new a", out)
+        self.assertNotIn("old a", out)
+        self.assertIn("keep b", out)
+
+    def test_upsert_section_appends_when_heading_absent(self):
+        out = sod.upsert_section("## B\nkeep b\n", "A", "new a")
+        self.assertIn("## A", out)
+        self.assertIn("keep b", out)
+
+    def test_window_falls_back_to_yesterday_with_no_notes(self):
+        self.assertEqual(sod.cmd_window(),
+                         str(sod.today() - dt.timedelta(days=1)))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -574,6 +574,74 @@ def cmd_important(ref=None, limit=5):
     return render_important(important_pool(ref)[:limit])
 
 
+# --- daily note --------------------------------------------------------------
+# Only these four sections are touched, so re-running is safe and the sections
+# `eod` appends later in the day survive untouched.
+
+SECTION_ORDER = ["IMPORTANT TODAY/THIS WEEK", "OPEN COMMITMENTS",
+                 "PR REVIEW BACKLOG", "PROJECT WORK"]
+DAILY_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})\.md$")
+
+
+def daily_note_path(day):
+    return DAILY_DIR / f"{day:%Y}" / f"{day:%m-%B}" / f"{day:%Y-%m-%d}.md"
+
+
+def latest_daily_date(before=None):
+    before = before or today()
+    dates = []
+    for path in DAILY_DIR.rglob("*.md"):
+        m = DAILY_RE.search(path.name)
+        if not m:
+            continue
+        found = dt.date(int(m[1]), int(m[2]), int(m[3]))
+        if found < before:
+            dates.append(found)
+    return max(dates) if dates else None
+
+
+def cmd_window():
+    """Oldest timestamp for the Slack/Gmail searches: the most recent daily
+    note strictly before today, else yesterday on a first-ever run."""
+    return str(latest_daily_date() or (today() - dt.timedelta(days=1)))
+
+
+def upsert_section(text, heading, body):
+    marker = f"## {heading}"
+    lines = text.splitlines()
+    start = next((i for i, l in enumerate(lines) if l.strip() == marker), None)
+    if start is None:
+        joined = text.rstrip("\n")
+        prefix = (joined + "\n\n") if joined else ""
+        out = f"{prefix}{marker}\n\n{body.rstrip()}"
+    else:
+        end = next((i for i in range(start + 1, len(lines))
+                    if lines[i].startswith("## ")), len(lines))
+        out = "\n".join(lines[:start + 1] + ["", body.rstrip(), ""] + lines[end:])
+    # Both branches normalize here: otherwise appending vs. replacing the last
+    # section leaves a different trailing-newline count and re-runs drift.
+    return out.rstrip("\n") + "\n"
+
+
+def cmd_daily_note(day=None):
+    day = day or today()
+    path = daily_note_path(day)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = path.read_text() if path.exists() else ""
+    bodies = {
+        "IMPORTANT TODAY/THIS WEEK": cmd_important(),
+        "OPEN COMMITMENTS": "![[Commitments.base#Daily Note View]]",
+        "PR REVIEW BACKLOG": cmd_prs(),
+        "PROJECT WORK": "![[Project Work.base#Daily Note View]]",
+    }
+    # Iterating in SECTION_ORDER means a fresh note gets the four headings
+    # appended in spec order; an existing note keeps whatever order it has.
+    for heading in SECTION_ORDER:
+        text = upsert_section(text, heading, bodies[heading])
+    path.write_text(text)
+    return f"Daily note written: {path}"
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="sod")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -590,6 +658,8 @@ def main(argv=None):
     add.add_argument("--tags", default="", help="comma-separated")
     imp = sub.add_parser("important", help="render IMPORTANT TODAY/THIS WEEK")
     imp.add_argument("--limit", type=int, default=5)
+    sub.add_parser("window", help="print the Slack/Gmail search cutoff date")
+    sub.add_parser("daily-note", help="write today's four SOD sections")
     args = parser.parse_args(argv)
     if args.cmd == "prs":
         print(cmd_prs())
@@ -601,6 +671,10 @@ def main(argv=None):
         print(cmd_commit_add(args))
     elif args.cmd == "important":
         print(cmd_important(limit=args.limit))
+    elif args.cmd == "window":
+        print(cmd_window())
+    elif args.cmd == "daily-note":
+        print(cmd_daily_note())
 
 
 if __name__ == "__main__":
