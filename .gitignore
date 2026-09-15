@@ -27,3 +27,7 @@ ai-configs/context7/config.json
 
 # Pre-commit / secret scanning
 .secrets.baseline
+
+# Python bytecode
+__pycache__/
+*.pyc
