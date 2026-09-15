@@ -961,5 +961,77 @@ class TestTodoList(unittest.TestCase):
         self.assertIn("_No matching todos", sod.cmd_todo_list(status="open", ref=self.REF))
 
 
+class TestResolveTodo(unittest.TestCase):
+    def test_resolve_by_number(self):
+        notes = [{"title": "A"}, {"title": "B"}]
+        self.assertEqual(sod.resolve_todo("2", notes)["title"], "B")
+
+    def test_resolve_by_number_out_of_range_raises(self):
+        with self.assertRaises(ValueError):
+            sod.resolve_todo("5", [{"title": "A"}])
+
+    def test_resolve_by_substring_case_insensitive(self):
+        notes = [{"title": "Rotate the ILM policy"}, {"title": "Ship the report"}]
+        self.assertEqual(sod.resolve_todo("ilm", notes)["title"], "Rotate the ILM policy")
+
+    def test_resolve_no_match_raises(self):
+        with self.assertRaises(ValueError):
+            sod.resolve_todo("nonexistent", [{"title": "A"}])
+
+    def test_resolve_ambiguous_match_raises(self):
+        notes = [{"title": "Ship the report"}, {"title": "Ship the deck"}]
+        with self.assertRaises(ValueError):
+            sod.resolve_todo("ship", notes)
+
+
+class TestTodoTransitions(unittest.TestCase):
+    REF = dt.date(2026, 9, 15)
+
+    def setUp(self):
+        sod.COMMITMENTS_DIR = Path(tempfile.mkdtemp())
+
+    def add(self, title, status="open", due_date=None, complexity=None):
+        path = sod.COMMITMENTS_DIR / f"{sod.slugify(title)}.md"
+        sod.write_note(path, {
+            "title": title, "committed_date": "2026-09-01", "due_date": due_date,
+            "complexity": complexity, "tags": [], "summary": "s",
+            "link": f"todo://{sod.slugify(title)}", "status": status, "sort_key": 0})
+        return path
+
+    def test_done_sets_status_and_recomputes_sort_key(self):
+        self.add("Task one", due_date="2026-09-10")
+        path_two = self.add("Task two", due_date="2026-09-05")
+        out = sod.cmd_todo_done("Task two", ref=self.REF)
+        self.assertEqual(out, "done: Task two")
+        self.assertEqual(sod.read_note(path_two)["status"], "done")
+        remaining = sod.load_commitments()
+        self.assertEqual([n["title"] for n in remaining], ["Task one"])
+        self.assertEqual(remaining[0]["sort_key"], 0)
+
+    def test_wait_sets_status_waiting(self):
+        path = self.add("Blocked task")
+        sod.cmd_todo_wait("Blocked task", ref=self.REF)
+        self.assertEqual(sod.read_note(path)["status"], "waiting")
+
+    def test_move_rejects_invalid_status(self):
+        self.add("Some task")
+        with self.assertRaises(ValueError):
+            sod.cmd_todo_move("Some task", "bogus", ref=self.REF)
+
+    def test_move_sets_a_valid_status(self):
+        path = self.add("Some task")
+        sod.cmd_todo_move("Some task", "waiting", ref=self.REF)
+        self.assertEqual(sod.read_note(path)["status"], "waiting")
+
+    def test_from_status_scopes_which_pool_identifier_resolves_against(self):
+        open_path = self.add("Open task")
+        waiting_path = self.add("Waiting task", status="waiting")
+        sod.cmd_todo_done("1", ref=self.REF)
+        self.assertEqual(sod.read_note(open_path)["status"], "done")
+        self.assertEqual(sod.read_note(waiting_path)["status"], "waiting")
+        sod.cmd_todo_move("1", "open", from_status="waiting", ref=self.REF)
+        self.assertEqual(sod.read_note(waiting_path)["status"], "open")
+
+
 if __name__ == "__main__":
     unittest.main()

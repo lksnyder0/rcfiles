@@ -518,6 +518,50 @@ def cmd_todo_list(status="open", ref=None):
     return render_todo_list(notes)
 
 
+STATUS_CHOICES = ("open", "waiting", "done")
+
+
+def resolve_todo(identifier, notes):
+    if re.fullmatch(r"-?\d+", identifier):
+        index = int(identifier)
+        if 1 <= index <= len(notes):
+            return notes[index - 1]
+        raise ValueError(f"no item at position {index} ({len(notes)} listed)")
+    matches = [n for n in notes if identifier.lower() in str(n.get("title", "")).lower()]
+    if len(matches) == 1:
+        return matches[0]
+    if not matches:
+        raise ValueError(f"no todo matching {identifier!r}")
+    titles = ", ".join(repr(n.get("title", "")) for n in matches)
+    raise ValueError(f"ambiguous match for {identifier!r}: {titles}")
+
+
+def _set_status(identifier, from_status, new_status, ref=None):
+    ref = ref or today()
+    notes = sorted(commitments_by_status(from_status),
+                   key=lambda n: commitment_sort_tuple(n, ref))
+    note = resolve_todo(identifier, notes)
+    fields = {k: note.get(k) for k in COMMITMENT_FIELDS}
+    fields["status"] = new_status
+    write_note(note["_path"], fields, note.get("_body", ""))
+    cmd_commitments(ref)
+    return f"{new_status}: {note.get('title', '')}"
+
+
+def cmd_todo_done(identifier, from_status="open", ref=None):
+    return _set_status(identifier, from_status, "done", ref)
+
+
+def cmd_todo_wait(identifier, from_status="open", ref=None):
+    return _set_status(identifier, from_status, "waiting", ref)
+
+
+def cmd_todo_move(identifier, new_status, from_status="open", ref=None):
+    if new_status not in STATUS_CHOICES:
+        raise ValueError(f"invalid status: {new_status}")
+    return _set_status(identifier, from_status, new_status, ref)
+
+
 # --- IMPORTANT TODAY/THIS WEEK -----------------------------------------------
 # Merges the two Bases with active TODOs, so it cannot be a Base query. Only
 # stories are eligible from PROJECT WORK: an epic is not an atomic item that
@@ -802,6 +846,16 @@ def main(argv=None):
     ta.add_argument("--tags", default="", help="comma-separated")
     tl = sub.add_parser("todo-list", help="list self-directed tasks")
     tl.add_argument("--status", choices=["open", "waiting", "done", "all"], default="open")
+    td = sub.add_parser("todo-done", help="mark a self-directed task done")
+    td.add_argument("identifier")
+    td.add_argument("--status", dest="from_status", choices=STATUS_CHOICES, default="open")
+    tw = sub.add_parser("todo-wait", help="mark a self-directed task waiting")
+    tw.add_argument("identifier")
+    tw.add_argument("--status", dest="from_status", choices=STATUS_CHOICES, default="open")
+    tm = sub.add_parser("todo-move", help="set a self-directed task's status")
+    tm.add_argument("identifier")
+    tm.add_argument("new_status", choices=STATUS_CHOICES)
+    tm.add_argument("--status", dest="from_status", choices=STATUS_CHOICES, default="open")
     sub.add_parser("todos", help="list open root TODOs with their todo:// keys")
     imp = sub.add_parser("important", help="render IMPORTANT TODAY/THIS WEEK")
     imp.add_argument("--limit", type=int, default=5)
@@ -820,6 +874,12 @@ def main(argv=None):
         print(cmd_todo_add(args))
     elif args.cmd == "todo-list":
         print(cmd_todo_list(status=args.status))
+    elif args.cmd == "todo-done":
+        print(cmd_todo_done(args.identifier, args.from_status))
+    elif args.cmd == "todo-wait":
+        print(cmd_todo_wait(args.identifier, args.from_status))
+    elif args.cmd == "todo-move":
+        print(cmd_todo_move(args.identifier, args.new_status, args.from_status))
     elif args.cmd == "important":
         print(cmd_important(limit=args.limit))
     elif args.cmd == "todos":
