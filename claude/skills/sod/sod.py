@@ -205,13 +205,179 @@ def cmd_prs():
     return render_prs(collect_prs())
 
 
+# --- PROJECT WORK ------------------------------------------------------------
+# Fully regenerated from Shortcut each run, so closed or reassigned stories and
+# the epics they leave empty disappear without any delete bookkeeping.
+
+NO_EPIC_RANK = 99
+NO_EPIC_LABEL = "No epic"
+PROJECT_FIELDS = ("type", "id", "title", "state", "epic_id", "created_at",
+                  "due_date", "complexity", "blocker", "link", "epic_group",
+                  "sort_key")
+
+
+def short_api(path, **params):
+    args = ["short", "api", path]
+    for key, value in params.items():
+        args += ["-f", f"{key}={value}"]
+    return json.loads(sh(args))
+
+
+def done_state_ids():
+    """State ids whose workflow-state `type` is 'done'. Never match on state
+    name: 'Blocked' is `unstarted` in one workflow and `started` in another."""
+    return {
+        state["id"]
+        for workflow in short_api("/workflows")
+        for state in workflow["states"]
+        if state["type"] == "done"
+    }
+
+
+def _state_names():
+    return {
+        state["id"]: state["name"]
+        for workflow in short_api("/workflows")
+        for state in workflow["states"]
+    }
+
+
+def search_stories(query):
+    """Shortcut caps search page_size at 25, so follow the `next` cursor.
+    20 stories today, but this must not silently truncate at 26."""
+    stories, params = [], {"query": query, "page_size": 25}
+    while True:
+        page = short_api("/search/stories", **params)
+        stories.extend(page.get("data") or [])
+        cursor = page.get("next")
+        if not cursor:
+            return stories
+        token = re.search(r"next=([^&]+)", str(cursor))
+        if not token:
+            return stories
+        params = {"query": query, "page_size": 25, "next": token[1]}
+
+
+def estimate_to_complexity(estimate):
+    if estimate is None:
+        return None
+    if estimate <= 1:
+        return "low"
+    if estimate <= 3:
+        return "medium"
+    return "high"
+
+
+def fetch_project_work():
+    mention = short_api("/member")["mention_name"]
+    done = done_state_ids()
+    names = _state_names()
+
+    stories = []
+    for s in search_stories(f"owner:{mention} !is:done"):
+        if s["workflow_state_id"] in done:
+            continue  # belt and braces behind `!is:done`
+        stories.append({
+            "type": "story",
+            "id": s["id"],
+            "title": s["name"],
+            "state": names.get(s["workflow_state_id"], ""),
+            "epic_id": s.get("epic_id"),
+            "created_at": parse_date(s["created_at"]),
+            "due_date": parse_date(s.get("deadline")),
+            "complexity": estimate_to_complexity(s.get("estimate")),
+            "blocker": bool(s.get("blocker")),
+            "link": s["app_url"],
+        })
+
+    epics = []
+    for epic_id in sorted({s["epic_id"] for s in stories if s["epic_id"]}):
+        e = short_api(f"/epics/{epic_id}")
+        epics.append({
+            "type": "epic",
+            "id": e["id"],
+            "title": e["name"],
+            "state": e.get("state", ""),
+            "epic_id": None,
+            "created_at": parse_date(e["created_at"]),
+            "due_date": parse_date(e.get("deadline")),
+            "complexity": None,
+            "blocker": False,
+            "link": e["app_url"],
+        })
+    return epics, stories
+
+
+def _story_order(story):
+    """Blockers first, then due_date asc, then complexity asc."""
+    return (0 if story["blocker"] else 1,
+            story["due_date"] or FAR_FUTURE,
+            complexity_rank(story["complexity"]),
+            story["id"])
+
+
+def order_project_work(epics, stories):
+    ranked = sorted(epics, key=lambda e: (
+        0 if e["due_date"] else 1,
+        e["due_date"] or FAR_FUTURE,
+        e["created_at"],
+        e["id"],
+    ))
+    rows = []
+    for rank, epic in enumerate(ranked):
+        # The numeric prefix makes Bases' alphabetical group ordering reproduce
+        # the epic ranking computed here.
+        group = f"{rank:02d} — {epic['title']}"
+        epic["epic_group"] = group
+        rows.append(epic)
+        kids = [s for s in stories if s["epic_id"] == epic["id"]]
+        for story in sorted(kids, key=_story_order):
+            story["epic_group"] = group
+            rows.append(story)
+
+    group = f"{NO_EPIC_RANK:02d} — {NO_EPIC_LABEL}"
+    for story in sorted((s for s in stories if not s["epic_id"]), key=_story_order):
+        story["epic_group"] = group
+        rows.append(story)
+
+    for index, row in enumerate(rows):
+        row["sort_key"] = index
+    return rows
+
+
+def _clear_generated(directory, types):
+    """Only unlink notes this script owns — anything a human dropped in the
+    folder has no `type: epic|story` and survives."""
+    for path in directory.glob("*.md"):
+        if read_note(path).get("type") in types:
+            path.unlink()
+
+
+def cmd_project_work():
+    epics, stories = fetch_project_work()
+    rows = order_project_work(epics, stories)
+    PROJECT_DIR.mkdir(parents=True, exist_ok=True)
+    _clear_generated(PROJECT_DIR, {"epic", "story"})
+    for row in rows:
+        fields = {k: row.get(k) for k in PROJECT_FIELDS}
+        fields["created_at"] = str(row["created_at"]) if row["created_at"] else None
+        fields["due_date"] = str(row["due_date"]) if row["due_date"] else None
+        write_note(PROJECT_DIR / f"{row['type']}-{row['id']}.md", fields,
+                   f"[{row['title']}]({row['link']})\n")
+    n_epics = sum(1 for r in rows if r["type"] == "epic")
+    return f"Project Work: {n_epics} epics, {len(rows) - n_epics} stories"
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="sod")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("prs", help="render the PR REVIEW BACKLOG table")
+    sub.add_parser("project-work", help="regenerate the Project Work Base")
     args = parser.parse_args(argv)
     if args.cmd == "prs":
         print(cmd_prs())
+    elif args.cmd == "project-work":
+        print(cmd_project_work())
 
 
 if __name__ == "__main__":
