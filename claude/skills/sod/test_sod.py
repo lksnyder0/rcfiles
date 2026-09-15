@@ -1,3 +1,4 @@
+import argparse
 import datetime as dt
 import os
 import tempfile
@@ -886,6 +887,39 @@ class TestDailyNote(unittest.TestCase):
     def test_window_falls_back_to_yesterday_with_no_notes(self):
         self.assertEqual(sod.cmd_window(),
                          str(sod.today() - dt.timedelta(days=1)))
+
+
+class TestTodoAdd(unittest.TestCase):
+    def setUp(self):
+        sod.COMMITMENTS_DIR = Path(tempfile.mkdtemp())
+
+    def args(self, title, summary="", due_date=None, complexity=None, tags=""):
+        return argparse.Namespace(title=title, summary=summary, due_date=due_date,
+                                  complexity=complexity, tags=tags)
+
+    def test_creates_commitment_with_todo_link_and_open_status(self):
+        out = sod.cmd_todo_add(self.args("Rotate the Elasticsearch ILM policy"))
+        self.assertTrue(out.startswith("created:"))
+        notes = sod.load_commitments()
+        self.assertEqual(len(notes), 1)
+        self.assertEqual(notes[0]["title"], "Rotate the Elasticsearch ILM policy")
+        self.assertTrue(notes[0]["link"].startswith("todo://"))
+        self.assertEqual(notes[0]["status"], "open")
+
+    def test_due_date_complexity_and_tags_are_stored(self):
+        sod.cmd_todo_add(self.args("Ship the report", summary="s",
+                                   due_date="2026-09-20", complexity="high",
+                                   tags="urgent, reports"))
+        note = sod.load_commitments()[0]
+        self.assertEqual(note["due_date"], "2026-09-20")
+        self.assertEqual(note["complexity"], "high")
+        self.assertEqual(note["tags"], ["urgent", "reports"])
+
+    def test_readding_the_same_title_is_a_duplicate(self):
+        sod.cmd_todo_add(self.args("Same task"))
+        out = sod.cmd_todo_add(self.args("Same task"))
+        self.assertTrue(out.startswith("duplicate:"))
+        self.assertEqual(len(sod.load_commitments()), 1)
 
 
 if __name__ == "__main__":

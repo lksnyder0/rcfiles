@@ -481,6 +481,16 @@ def cmd_commit_add(args):
     return f"{action}: {path}"
 
 
+def cmd_todo_add(args):
+    link = todo_link(args.title)
+    action, path = upsert_commitment(
+        title=args.title, summary=args.summary or "", link=link,
+        committed_date=str(today()), due_date=args.due_date,
+        complexity=args.complexity,
+        tags=[t.strip() for t in args.tags.split(",") if t.strip()])
+    return f"{action}: {path}"
+
+
 # --- IMPORTANT TODAY/THIS WEEK -----------------------------------------------
 # Merges the two Bases with active TODOs, so it cannot be a Base query. Only
 # stories are eligible from PROJECT WORK: an epic is not an atomic item that
@@ -757,6 +767,12 @@ def main(argv=None):
     add.add_argument("--complexity", choices=["low", "medium", "high"])
     add.add_argument("--tags", default="", help="comma-separated")
     add.add_argument("--body", help="note body; defaults to a link back to the source")
+    ta = sub.add_parser("todo-add", help="create a self-directed task")
+    ta.add_argument("--title", required=True)
+    ta.add_argument("--summary", default="")
+    ta.add_argument("--due-date", dest="due_date")
+    ta.add_argument("--complexity", choices=["low", "medium", "high"])
+    ta.add_argument("--tags", default="", help="comma-separated")
     sub.add_parser("todos", help="list open root TODOs with their todo:// keys")
     imp = sub.add_parser("important", help="render IMPORTANT TODAY/THIS WEEK")
     imp.add_argument("--limit", type=int, default=5)
@@ -771,6 +787,8 @@ def main(argv=None):
         print(cmd_commitments())
     elif args.cmd == "commit-add":
         print(cmd_commit_add(args))
+    elif args.cmd == "todo-add":
+        print(cmd_todo_add(args))
     elif args.cmd == "important":
         print(cmd_important(limit=args.limit))
     elif args.cmd == "todos":
