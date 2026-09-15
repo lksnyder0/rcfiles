@@ -1001,12 +1001,13 @@ class TestTodoTransitions(unittest.TestCase):
     def test_done_sets_status_and_recomputes_sort_key(self):
         self.add("Task one", due_date="2026-09-10")
         path_two = self.add("Task two", due_date="2026-09-05")
+        self.add("Task three", due_date="2026-09-12")
         out = sod.cmd_todo_done("Task two", ref=self.REF)
         self.assertEqual(out, "done: Task two")
         self.assertEqual(sod.read_note(path_two)["status"], "done")
-        remaining = sod.load_commitments()
-        self.assertEqual([n["title"] for n in remaining], ["Task one"])
-        self.assertEqual(remaining[0]["sort_key"], 0)
+        remaining = sorted(sod.load_commitments(), key=lambda n: n["sort_key"])
+        self.assertEqual([n["title"] for n in remaining], ["Task one", "Task three"])
+        self.assertEqual([n["sort_key"] for n in remaining], [0, 1])
 
     def test_wait_sets_status_waiting(self):
         path = self.add("Blocked task")
