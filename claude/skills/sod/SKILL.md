@@ -1,235 +1,158 @@
 ---
 name: sod
 description: "Use when the user wants to start their day, generate a morning plan, or review overnight activity"
-allowed-tools: Bash(gh *), Glob, Read, Write, Edit, mcp__glean_claude-code__search
+allowed-tools: Bash(python3 *), Bash(gh *), Bash(short *), Read, Edit, Glob, mcp__glean_claude-code__search
 ---
 
-# Start-of-Day Plan
+# Start-of-Day
 
-Generate a prioritized daily plan and seed the day's Obsidian daily note by gathering overnight incidents, open PR reviews, Slack requests, and carryover TODOs. Present a draft for review, then write the daily note.
+Seed today's daily note with four sections: **IMPORTANT TODAY/THIS WEEK**, **OPEN COMMITMENTS**, **PR REVIEW BACKLOG**, **PROJECT WORK**.
+
+Almost all of this is deterministic and lives in `sod.py`. Your only judgment call is deciding which Slack/Gmail phrase-search hits are real commitments. Everything else is a script invocation whose output goes into the note verbatim.
 
 **Vault root:** `/Users/luke.snyder/code/Vaults/Work`
-**Daily note path:** `Daily notes/YYYY/MM-<Month>/YYYY-MM-DD.md` (use today's date, e.g., `Daily notes/2026/03-March/2026-03-31.md`)
-**TODO.md path:** `TODO.md` (relative to vault root)
+**Script:** `~/.claude/skills/sod/sod.py` (all commands below assume `python3 ~/.claude/skills/sod/sod.py`)
 
-## Step 0: Determine Time Window
+## What you must NOT do
 
-Find the most recent daily note to establish the "overnight" cutoff:
+- Never hand-write the PR REVIEW BACKLOG table, the IMPORTANT TODAY list, or any `Project Work/` note. All three are script output by design, so two runs with unchanged upstream state produce identical text.
+- Never create or edit `Commitments/` notes directly. Use `commit-add`, which owns dedup and filenames.
+- Never fall back to the Shortcut MCP tools. PROJECT WORK must come from `short api` or not at all — the MCP path is not reproducible.
+- Never delegate Glean searches to a subagent. Subagents have fabricated Slack messages and incidents in the past. Call `mcp__glean_claude-code__search` yourself, in the main session.
 
-1. Use Glob to find all daily note files: `/Users/luke.snyder/code/Vaults/Work/Daily notes/**/*.md`
-2. Parse filenames to extract dates (format: `YYYY-MM-DD.md`). Sort descending.
-3. The most recent date is the cutoff. All data sources search for activity after this date.
-4. If no daily notes exist, default to yesterday's date.
-5. Record the cutoff date for use in all subsequent steps.
+## Step 1: Resolve the search window
 
-## Step 1: Gather Data
-
-Gather data from all sources in parallel. Each source is independent — if one fails, note it and continue with the others.
-
-**IMPORTANT — Glean must be called directly:** Never delegate Glean searches to a subagent. Always call `mcp__glean_claude-code__search` yourself in the main session. Subagents have fabricated results in the past. Use the dedicated `app`, `channel`, and `after` parameters — do not embed these as keywords in the `query` string, as that interferes with Glean's faceted search.
-
-**Verify results before including them:** Glean Slack results should have real channel IDs (e.g. `C03TRM93V0C`), real message URLs, and genuine snippet text. If a result looks generic or placeholder-ish, discard it rather than including it in the plan.
-
-### 1a. Overnight Incidents (Glean -> Slack #incidents)
-
-Call `mcp__glean_claude-code__search` with these parameters:
-- `query`: `*`
-- `app`: `slack`
-- `channel`: `incidents`
-- `after`: CUTOFF_DATE
-- `sort_by_recency`: `true`
-
-Parse the structured incident message format from the returned snippets:
-- Severity (SEV-1 through SEV-4)
-- Title/description from "New Incident:" line
-- Reporter from "Reporter:" line
-- Affected Services from "Affected Services:" line
-- Status from "Status:" line (Investigating, Resolved, Monitoring, etc.)
-- Description from "Description:" line
-- Dedicated incident channel (#tmp-incident-*)
-
-After retrieving results, filter out any incidents where the Status field is "Resolved" — only include active/investigating incidents. Sort by severity (SEV-1 first).
-
-If unavailable or no results: record `"Incidents: unavailable"` and continue.
-
-### 1b. Open PR Reviews (GitHub CLI)
-
-Run these `gh` commands (scoped to `huntresslabs` org):
-
-1. PRs where review is requested:
-   ```bash
-   gh search prs --review-requested @me --state open --draft=false --owner huntresslabs --json number,title,repository,url,createdAt --limit 50
-   ```
-
-2. PRs authored by user still open:
-   ```bash
-   gh search prs --author @me --state open --owner huntresslabs --json number,title,repository,url,createdAt --limit 50
-   ```
-
-Draft PRs are excluded from the review-requested list (`--draft=false`) — they are not reviewable yet. The user's own drafts stay in their open-PR list.
-
-Categorize:
-- **Review requested**: PRs where your review is blocking someone else
-- **Your open PRs**: PRs you authored that are still open (informational)
-
-If `gh` errors or is unavailable, record: `"GitHub: unavailable"` and continue.
-
-### 1c. Slack Requests (Glean -> Slack)
-
-Call `mcp__glean_claude-code__search` with these parameters:
-- `query`: `luke`
-- `app`: `slack`
-- `after`: CUTOFF_DATE
-- `sort_by_recency`: `true`
-- `num_results`: `15`
-
-Only include messages where someone else is directing a request, question, or action item at Luke. Discard messages where Luke is the author, casual social conversation, and any result whose channel name or URL looks fabricated.
-
-For each genuine result:
-- Record the real channel name and URL from the result metadata
-- Quote the actual snippet text — do not paraphrase or invent
-
-If unavailable or no actionable results: record `"Slack: unavailable"` and continue.
-
-### 1d. Overnight Emails (Glean -> Gmail)
-
-Call `mcp__glean_claude-code__search` with these parameters:
-- `query`: `*`
-- `app`: `gmail`
-- `after`: CUTOFF_DATE
-
-For each email, record:
-- Subject line
-- Sender
-- Whether the user is in the To or CC field
-- One-line summary of the content
-
-Filter to emails that likely need a response or action:
-- Direct emails to the user (not just CC'd on a thread)
-- Emails containing questions, requests, or action items directed at the user
-- Emails from managers, stakeholders, or cross-team contacts
-
-Exclude:
-- Automated notifications (JIRA, GitHub, PagerDuty, etc. — these are covered by other sources)
-- Mailing list digests where no action is needed
-- Newsletters and marketing emails
-
-If unavailable or no relevant results: record `"Email: unavailable"` and continue.
-
-### 1e. TODO.md
-
-1. Read `Vaults/Work/TODO.md`
-2. Extract items from:
-   - `## Today` — highest priority
-   - `## Backlog` — surfaced only if Today is light (fewer than 3 items)
-   - `## Waiting` — informational only, not actionable
-3. Preserve full markdown including wiki links and tags.
-
-### 1f. Previous Daily Note Carryover
-
-1. Read the most recent daily note (identified in Step 0).
-2. Extract all unchecked `- [ ]` items from any section.
-3. Record the item text and originating section for each.
-
-### All Sources Check
-
-If ALL data sources returned unavailable or empty results (no incidents, no PRs, no Slack requests, no emails, TODO.md is empty, and no carryover items), report to the user:
-> "All data sources returned empty or unavailable. Nothing to plan today."
-
-Stop here — do not proceed to synthesis.
-
-## Step 2: Synthesize & Prioritize
-
-### Deduplication
-
-Items appearing in multiple sources are shown once with combined context (e.g., a TODO.md item that matches an open PR is shown once with both contexts noted).
-
-### Priority Order (fixed)
-
-1. **Active incidents** — unresolved from overnight
-2. **PR reviews requested** — blocking someone else
-3. **TODO.md Today items** — already flagged as important
-4. **Open Slack requests** — commitments/questions directed at user
-5. **Emails needing response** — overnight emails requiring action
-6. **Unchecked items from previous daily note** — carryover
-7. **TODO.md Backlog items** — only if Today has fewer than 3 items
-
-Within each tier, preserve original ordering.
-
-### Item Format
-
-One-line with source context in parentheses:
-- `SEV-3 incident: Session Redis migration — Investigating — #tmp-incident-channel (incident)`
-- `Review PR: huntresslabs/infra-k8s#529 — Tailscale K8s operator (PR review)`
-- `Expand on Tailscale Initial Deployment Epic (TODO: Today)`
-- `@jane asked about deployment process in #sre-team (Slack)`
-- `Reply to @john.stotler re: Tailscale rollout timeline (email)`
-- `Add failure stream alert (carryover from [[2026-03-30]])`
-
-### Your Open PRs
-
-Listed separately as informational, not action items.
-
-## Step 3: Present Draft for Review
-
-Assemble and present in terminal, formatted exactly as it will be written to the daily note.
-
-Draft sections (omit any section that has no data):
-
-```
-## Plan
-- [ ] Priority 1 item (source context)
-- [ ] Priority 2 item (source context)
-
-## Your Open PRs
-- [repo#number](url) — title — status
-
-## Incidents
-- :large_red_circle: SEV-1: Title — Status — #tmp-incident-channel
-- :large_orange_circle: SEV-2: Title — Status — #tmp-incident-channel
-- :large_yellow_circle: SEV-3: Title — Status — #tmp-incident-channel
-- :large_green_circle: SEV-4: Title — Status — #tmp-incident-channel
+```bash
+python3 ~/.claude/skills/sod/sod.py window
 ```
 
-**Section purposes:**
-- `## Plan` is the prioritized action list — incidents appear here as action items (e.g., "SEV-3 incident: Title (incident)")
-- `## Incidents` is a reference section with full structured details (severity, status, channel link) — supplements the plan item, not a duplicate
-- `## Your Open PRs` is informational only — these are NOT in the plan unless they need action (rebasing, review comments)
+Prints the cutoff date — the most recent daily note strictly before today, or yesterday on a first-ever run. Use it as `after` for every Glean search below. Call it `CUTOFF`.
 
-If any data sources were unavailable, note this at the top:
-> **Note:** The following sources were unavailable: [list]. Data from these sources is not included.
+## Step 2: Slack commitments
 
-Present the draft, then immediately proceed to Step 4 — do not wait for user approval. The user will review the daily note in Obsidian and make manual edits if needed.
+Run **one search per phrase** rather than reading the whole window's Slack activity. For each phrase, call `mcp__glean_claude-code__search` with:
 
-## Step 4: Write Output
+- `query`: the phrase
+- `app`: `slack`
+- `from`: `me`
+- `after`: `CUTOFF`
 
-### 4a. Create or Seed the Daily Note
+Phrases (case-insensitive substring match):
 
-**Path:** `/Users/luke.snyder/code/Vaults/Work/Daily notes/YYYY/MM-<Month>/YYYY-MM-DD.md` (e.g., `Daily notes/2026/03-March/2026-03-31.md`). Create parent directories if they don't exist.
+```
+i'll, i will, i can take, i've got, i got it, let me take, let me handle,
+i'm on it, will do, leave it with me, i'll follow up, i'll circle back,
+i'll own, i'll pick that up, i'll get on it
+```
 
-- If the file does not exist, create it with the draft content.
-- If the file already exists and already contains a `## Plan` section (from a previous SOD run today), replace the existing Plan and Incidents sections with the new content.
-- If the file already exists without a `## Plan` section, merge the new content:
-  - For each section (`## Plan`, `## Incidents`, etc.):
-    - If the section heading already exists in the file, append new items below existing items in that section.
-    - If the section heading does not exist, add the section at the appropriate position in the file.
-  - Never overwrite or remove existing content.
+Use the dedicated `app` / `from` / `after` parameters — do not embed them as keywords in `query`, which breaks Glean's faceted search.
 
-### Obsidian Formatting Conventions
+**Only phrase hits are candidates.** Then judge each one. A real commitment is a promise of *future action by Luke*. Reject:
 
-Use these conventions throughout all written content:
-- Wiki links for cross-references: `[[YYYY-MM-DD]]`
-- Checkbox syntax: `- [ ]` for open, `- [x]` for completed
-- PR links: `[repo#number](url)`
-- Shortcut story links as URLs: `[SC-12345](https://app.shortcut.com/huntress/story/12345)`
-- Note links: `[[Tailscale]]`, `[[elasticsearch]]`, etc.
-- Incident severity: emoji prefix matching Slack conventions
-  - `:large_red_circle:` SEV-1
-  - `:large_orange_circle:` SEV-2
-  - `:large_yellow_circle:` SEV-3
-  - `:large_green_circle:` SEV-4
+- Idiomatic false positives — "that will do", "will do nicely", "it'll do".
+- Quoted or forwarded text where Luke is relaying someone else's words.
+- Anything already completed inside the same thread.
+- Results that look fabricated. A genuine Slack hit has a real channel id (e.g. `C03TRM93V0C`) and a real message permalink. Discard anything generic or placeholder-ish rather than writing it.
 
-### Completion
+## Step 3: Training emails
 
-After writing all files, confirm to the user:
-> "Morning plan written to `Daily notes/YYYY-MM-DD.md`. [N] plan items."
+Same pattern, one search per phrase, with `app: gmail` and `after: CUTOFF`:
+
+```
+training, certification, complete by, required course, assigned course,
+compliance training, due by, deadline to complete, please complete
+```
+
+Judge which candidates are genuine assigned trainings. Reject newsletters, marketing, form receipts, and threads merely *discussing* training. For the ones that qualify: date assigned → `--committed-date`, date communicated in the email → `--due-date`.
+
+## Step 4: Write each commitment
+
+One call per surviving commitment, Slack and email alike — they share one Base and one schema:
+
+```bash
+python3 ~/.claude/skills/sod/sod.py commit-add \
+  --title "Send Connor the Elastic user info" \
+  --summary "Promised in DM to send the Elastic user list by EOD." \
+  --link "https://huntress.slack.com/archives/C03TRM93V0C/p1757894400123456" \
+  --committed-date 2026-09-14 \
+  --due-date 2026-09-16 \
+  --complexity low \
+  --tags elasticsearch,idex
+```
+
+`--link` is the Slack permalink or Gmail message URL and is the row key. The script prints `created`, `updated`, or `duplicate`:
+
+- `duplicate` — same permalink already recorded (a same-day re-run). Nothing written.
+- `updated` — a similar open commitment exists under a different permalink, so this is a cross-day restatement; only `due_date` was refreshed.
+- `created` — new row.
+
+Report the counts. Do not re-litigate the script's decision.
+
+`--due-date` is optional: omit it when no date was communicated. Undated commitments still surface, in the no-due-date tier.
+
+### Complexity rubric
+
+Apply it literally, so estimates stay consistent run to run:
+
+- **low** — under ~30 minutes, no dependencies: a quick reply, a single message, forwarding something.
+- **medium** — a few hours up to a day; may need to check existing docs or one other person, but the scope is clear.
+- **high** — more than a day, spans multiple sessions, needs coordinating across people or teams, or the scope itself is still unclear and needs investigation first.
+
+## Step 5: Regenerate and render
+
+In this exact order:
+
+```bash
+python3 ~/.claude/skills/sod/sod.py project-work
+python3 ~/.claude/skills/sod/sod.py commitments
+python3 ~/.claude/skills/sod/sod.py daily-note
+```
+
+Order matters: `commitments` recomputes `sort_key` across everything `commit-add` just wrote, and `daily-note` reads both Bases to rank IMPORTANT TODAY/THIS WEEK.
+
+- `project-work` fully regenerates `Project Work/` from Shortcut. Closed or reassigned stories, and epics left with no qualifying story, disappear on their own.
+- `commitments` recomputes ordering over `status: open` notes. `done` entries stay on disk as history.
+- `daily-note` writes only the four SOD sections. Anything else in the note — including sections `eod` added — is left alone, so re-running mid-day is safe.
+
+## Degradation
+
+Each source fails independently. Note what was unavailable in your summary and continue:
+
+- `gh` fails → the PR table renders its placeholder; the rest of the run proceeds.
+- `short api` fails → say so and skip `project-work`. Do **not** substitute the Shortcut MCP.
+- Glean returns nothing → no new commitments; both Bases still regenerate.
+
+## Completion
+
+Report:
+
+- the daily note path
+- commitment counts as `N created, N updated, N duplicate`
+- epic and story counts from `project-work`
+- PR row count
+- any source that was unavailable
+
+## How the sections work
+
+Useful when something looks wrong:
+
+| Section | Mechanism |
+|---|---|
+| IMPORTANT TODAY/THIS WEEK | Script-rendered. Merges open commitments, PROJECT WORK **stories only** (never epics), and unindented `- [ ]` items under `## Today`/`## Backlog` in `TODO.md`. Four bands: **overdue** (any source) → **started** stories by closest due date → **unstarted** stories by complexity → **everything else** by `due_date asc, complexity asc`. `backlog` stories are excluded entirely. Top 5. |
+| OPEN COMMITMENTS | Base embed, `![[Commitments.base#Daily Note View]]`. Filters `status == "open"`, sorts by `sort_key` alone. Mark one done by toggling `status` to `done` inline in the Base — no script needed. |
+| PR REVIEW BACKLOG | Script-rendered from four `gh` criteria: assigned to me, review-requested for `huntresslabs/infrastructure-sre`, review-requested for `huntresslabs/idex`, and every open PR in `huntresslabs/infra-elastic`. Deduped by repo + number, sorted oldest-first. Drafts are excluded except when assigned directly to me. |
+| PROJECT WORK | Base embed, `![[Project Work.base#Daily Note View]]`. Grouped by epic, sorted by `sort_key` alone. Within an epic, stories that block another story render first. |
+
+Both Bases sort by a precomputed integer `sort_key` because Obsidian Bases cannot express "partition into tiers, then sort within each tier". All tiering logic lives in `sod.py`.
+
+The banding exists because Shortcut estimates and deadlines are mostly unset in practice: ranking undated stories on `due_date`/`complexity` alone collapses to story id. Overdue still wins outright from any source, so nothing you promised can be buried. Inside bands 2 and 3, `due_date` and `complexity` still order the work — if estimates get filled in later they take effect automatically, no change needed.
+
+`backlog` stories are dropped because they need shaping before they can be finished. A story with a missing or unrecognised state type is **not** dropped — it lands in band 3 behind real unstarted work. Band membership reads the workflow state `type`, never the name, same as the done-check.
+
+## Tests
+
+```bash
+cd ~/.claude/skills/sod && python3 -m unittest test_sod -v
+```
+
+Stdlib `unittest`, no dependencies. Run it after touching `sod.py`.
