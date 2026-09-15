@@ -548,13 +548,19 @@ class TestImportant(unittest.TestCase):
     def labels(self, limit=5):
         return [i["label"] for i in sod.important_pool(self.REF)][:limit]
 
-    def test_tiers_render_overdue_then_dated_then_undated(self):
+    def test_bands_render_overdue_then_started_then_unstarted_then_rest(self):
+        """The whole band order in one assertion. Note the undated started
+        story outranks a dated commitment -- that is the point of the band."""
         self.commitment("Overdue commitment", "2026-09-01", "high")
         self.commitment("Future commitment", "2026-09-30", "low")
-        self.row("story", 1, "Undated story", None, "low")
+        self.row("story", 1, "Started undated story", None, "low",
+                 state_type="started")
+        self.row("story", 2, "Unstarted undated story", None, "low",
+                 state_type="unstarted")
         self.assertEqual(self.labels(), ["Overdue commitment",
-                                         "Future commitment",
-                                         "Undated story"])
+                                         "Started undated story",
+                                         "Unstarted undated story",
+                                         "Future commitment"])
 
     def test_missing_complexity_sorts_last_within_tier(self):
         self.row("story", 1, "Undated story no estimate", None, None)
@@ -569,8 +575,11 @@ class TestImportant(unittest.TestCase):
                         labels.index("A plain todo"))
 
     def test_tie_on_due_date_and_complexity_breaks_by_source_order(self):
-        self.commitment("Tied commitment", "2026-09-20", "medium")
-        self.row("story", 1, "Tied story", "2026-09-20", "medium")
+        """Source order still governs, but only inside the overdue band -- it is
+        the one band where commitments, stories, and TODOs coexist."""
+        self.commitment("Tied commitment", "2026-09-10", "medium")
+        self.row("story", 1, "Tied story", "2026-09-10", "medium",
+                 state_type="started")
         self.assertEqual(self.labels()[:2], ["Tied commitment", "Tied story"])
 
     def test_epic_never_eligible_even_with_the_earliest_due_date(self):
@@ -619,37 +628,63 @@ class TestImportant(unittest.TestCase):
     def test_empty_pool_renders_placeholder(self):
         self.assertIn("_Nothing", sod.render_important([]))
 
-    def test_undated_stories_rank_started_then_unstarted_then_backlog(self):
-        """With no estimates or deadlines set in Shortcut, every story ties on
-        (tier, due_date, complexity) -- state is the only real signal left."""
-        self.row("story", 1, "Sitting in backlog", None, None, state_type="backlog")
-        self.row("story", 2, "Already started", None, None, state_type="started")
-        self.row("story", 3, "Not started yet", None, None, state_type="unstarted")
-        self.assertEqual(self.labels(), ["Already started",
-                                         "Not started yet",
-                                         "Sitting in backlog"])
+    def test_started_stories_sort_by_closest_due_date_undated_last(self):
+        self.row("story", 1, "Started undated", None, "low", state_type="started")
+        self.row("story", 2, "Started due later", "2026-09-25", "high",
+                 state_type="started")
+        self.row("story", 3, "Started due soon", "2026-09-17", "high",
+                 state_type="started")
+        self.assertEqual(self.labels(), ["Started due soon",
+                                         "Started due later",
+                                         "Started undated"])
 
-    def test_state_rank_never_overrides_due_date_or_complexity(self):
-        self.row("story", 1, "Backlog but due soon", "2026-09-16", None,
+    def test_unstarted_stories_sort_by_complexity_not_due_date(self):
+        self.row("story", 1, "Unstarted high, due soon", "2026-09-17", "high",
+                 state_type="unstarted")
+        self.row("story", 2, "Unstarted low, due later", "2026-09-25", "low",
+                 state_type="unstarted")
+        self.assertEqual(self.labels(), ["Unstarted low, due later",
+                                         "Unstarted high, due soon"])
+
+    def test_unstarted_outranks_non_overdue_commitments_and_todos(self):
+        self.commitment("Commitment due next week", "2026-09-22", "low")
+        self.todos("## Today\n- [ ] A plain todo\n")
+        self.row("story", 1, "Unstarted story", None, "high",
+                 state_type="unstarted")
+        self.assertEqual(self.labels(), ["Unstarted story",
+                                         "Commitment due next week",
+                                         "A plain todo"])
+
+    def test_backlog_stories_are_excluded_entirely(self):
+        """Backlog work still needs shaping, so it is not an answer to 'what
+        could I finish this week'."""
+        self.row("story", 1, "Backlog story", None, "low", state_type="backlog")
+        self.row("story", 2, "Started story", None, "high", state_type="started")
+        self.assertEqual(self.labels(), ["Started story"])
+
+    def test_backlog_story_excluded_even_when_overdue(self):
+        self.row("story", 1, "Overdue backlog story", "2026-09-01", "low",
                  state_type="backlog")
-        self.row("story", 2, "Started but undated", None, None,
-                 state_type="started")
-        self.assertEqual(self.labels(), ["Backlog but due soon",
-                                         "Started but undated"])
+        self.assertEqual(self.labels(), [])
 
-    def test_state_rank_never_overrides_source_order(self):
-        self.commitment("Tied commitment", "2026-09-20", "medium")
-        self.row("story", 1, "Tied started story", "2026-09-20", "medium",
+    def test_overdue_started_story_pins_into_the_overdue_band(self):
+        self.row("story", 1, "Overdue started story", "2026-09-02", "high",
                  state_type="started")
-        self.assertEqual(self.labels()[:2], ["Tied commitment",
-                                             "Tied started story"])
+        self.row("story", 2, "Started due soon", "2026-09-16", "low",
+                 state_type="started")
+        self.commitment("Commitment due next week", "2026-09-22", "low")
+        self.assertEqual(self.labels(), ["Overdue started story",
+                                         "Started due soon",
+                                         "Commitment due next week"])
 
-    def test_unknown_or_missing_state_type_sorts_last(self):
-        self.row("story", 1, "Story with no state type", None, None,
+    def test_unknown_state_type_is_kept_and_sorts_after_unstarted(self):
+        """Never silently drop a story just because its state type is missing --
+        only `backlog` is an explicit exclusion."""
+        self.row("story", 1, "Story with no state type", None, "low",
                  state_type=None)
-        self.row("story", 2, "Story sitting in backlog", None, None,
-                 state_type="backlog")
-        self.assertEqual(self.labels(), ["Story sitting in backlog",
+        self.row("story", 2, "Unstarted story", None, "low",
+                 state_type="unstarted")
+        self.assertEqual(self.labels(), ["Unstarted story",
                                          "Story with no state type"])
 
 

@@ -490,17 +490,36 @@ TODO_SECTIONS = ("Today", "Backlog")
 TODO_DUE_RE = re.compile(r"due\s*\[\[(\d{4}-\d{2}-\d{2})\]\]")
 SOURCE_RANK = {"commitment": 0, "project": 1, "todo": 2}
 
-# Applied only as the final tiebreak, after the spec's tier/due_date/complexity/
-# source ordering. Shortcut estimates and deadlines are mostly unset in
-# practice, so without this every undated story ties and ordering falls to
-# story id. "What I've already started" is the better answer to "what could I
-# finish this week". Unknown or missing types sort last.
-STATE_RANK = {"started": 0, "unstarted": 1, "backlog": 2}
-STATE_MISSING_RANK = 3
+# Four bands, in render order. Shortcut estimates and deadlines are mostly
+# unset in practice, so ranking undated stories on due_date/complexity alone
+# collapses to story id — state is the signal that actually exists.
+#
+#   0  overdue, any source          due_date asc, complexity asc, source order
+#   1  started stories             closest due_date first, undated last
+#   2  unstarted stories           complexity asc
+#   3  everything else             due_date asc, complexity asc, source order
+#
+# `backlog` stories are dropped outright: they still need shaping, so they are
+# not an answer to "what could I finish this week". A missing or unrecognised
+# state type is NOT dropped — it lands in band 2 behind real unstarted work,
+# because silently losing a story is worse than mis-ranking it.
+BAND_OVERDUE, BAND_STARTED, BAND_UNSTARTED, BAND_REST = 0, 1, 2, 3
+STORY_BAND = {"started": BAND_STARTED, "unstarted": BAND_UNSTARTED}
+EXCLUDED_STATE_TYPES = {"backlog"}
+STATE_RANK = {"started": 0, "unstarted": 1}
+STATE_MISSING_RANK = 2
+NO_DUE_ORD = 10 ** 7
 
 
 def state_rank(state_type):
     return STATE_RANK.get(state_type, STATE_MISSING_RANK)
+
+
+def _due_ord(value):
+    """Date as a sortable int, undated sorting last. Keeping every tuple slot
+    an int means bands can reuse slots for different fields safely."""
+    due = parse_date(value)
+    return due.toordinal() if due else NO_DUE_ORD
 
 
 def load_todos():
@@ -542,6 +561,8 @@ def important_pool(ref=None):
                      "state_type": None,
                      "link": note.get("link")})
     for note in load_project_stories():
+        if note.get("state_type") in EXCLUDED_STATE_TYPES:
+            continue
         pool.append({"label": note.get("title", ""), "source": "project",
                      "due_date": note.get("due_date"),
                      "complexity": note.get("complexity"),
@@ -554,15 +575,20 @@ def important_pool(ref=None):
 
     def key(item):
         due = parse_date(item["due_date"])
-        if due is None:
-            tier = 2
-        elif due < ref:
-            tier = 0
-        else:
-            tier = 1
-        return (tier, due or FAR_FUTURE,
-                complexity_rank(item["complexity"]), SOURCE_RANK[item["source"]],
-                state_rank(item["state_type"]))
+        due_ord = _due_ord(item["due_date"])
+        cx = complexity_rank(item["complexity"])
+        src = SOURCE_RANK[item["source"]]
+
+        # Overdue wins outright, whatever the source or state.
+        if due and due < ref:
+            return (BAND_OVERDUE, due_ord, cx, src, 0)
+        if item["source"] == "project":
+            band = STORY_BAND.get(item["state_type"], BAND_UNSTARTED)
+            if band == BAND_STARTED:
+                return (BAND_STARTED, due_ord, cx, 0, 0)
+            # Unstarted: complexity leads, due date only breaks its ties.
+            return (BAND_UNSTARTED, cx, due_ord, state_rank(item["state_type"]), 0)
+        return (BAND_REST, due_ord, cx, src, 0)
 
     for item in pool:
         due = parse_date(item["due_date"])

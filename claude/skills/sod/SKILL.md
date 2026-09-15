@@ -138,14 +138,16 @@ Useful when something looks wrong:
 
 | Section | Mechanism |
 |---|---|
-| IMPORTANT TODAY/THIS WEEK | Script-rendered. Merges open commitments, PROJECT WORK **stories only** (never epics), and unindented `- [ ]` items under `## Today`/`## Backlog` in `TODO.md`. Three tiers — overdue, then dated, then undated — sorted `due_date asc, complexity asc`, then source order, then Shortcut state (`started` → `unstarted` → `backlog`). Top 5. |
+| IMPORTANT TODAY/THIS WEEK | Script-rendered. Merges open commitments, PROJECT WORK **stories only** (never epics), and unindented `- [ ]` items under `## Today`/`## Backlog` in `TODO.md`. Four bands: **overdue** (any source) → **started** stories by closest due date → **unstarted** stories by complexity → **everything else** by `due_date asc, complexity asc`. `backlog` stories are excluded entirely. Top 5. |
 | OPEN COMMITMENTS | Base embed, `![[Commitments.base#Daily Note View]]`. Filters `status == "open"`, sorts by `sort_key` alone. Mark one done by toggling `status` to `done` inline in the Base — no script needed. |
 | PR REVIEW BACKLOG | Script-rendered from four `gh` criteria: assigned to me, review-requested for `huntresslabs/infrastructure-sre`, review-requested for `huntresslabs/idex`, and every open PR in `huntresslabs/infra-elastic`. Deduped by repo + number, sorted oldest-first. Drafts are excluded except when assigned directly to me. |
 | PROJECT WORK | Base embed, `![[Project Work.base#Daily Note View]]`. Grouped by epic, sorted by `sort_key` alone. Within an epic, stories that block another story render first. |
 
 Both Bases sort by a precomputed integer `sort_key` because Obsidian Bases cannot express "partition into tiers, then sort within each tier". All tiering logic lives in `sod.py`.
 
-The state tiebreak exists because Shortcut estimates and deadlines are mostly unset in practice: without it every undated story ties on `(tier, due_date, complexity)` and ordering collapses to story id. It fires only on an exact tie, so it never displaces a due date, a complexity, or source order. If estimates do get filled in later, complexity takes over ahead of it automatically — no change needed.
+The banding exists because Shortcut estimates and deadlines are mostly unset in practice: ranking undated stories on `due_date`/`complexity` alone collapses to story id. Overdue still wins outright from any source, so nothing you promised can be buried. Inside bands 2 and 3, `due_date` and `complexity` still order the work — if estimates get filled in later they take effect automatically, no change needed.
+
+`backlog` stories are dropped because they need shaping before they can be finished. A story with a missing or unrecognised state type is **not** dropped — it lands in band 3 behind real unstarted work. Band membership reads the workflow state `type`, never the name, same as the done-check.
 
 ## Tests
 
