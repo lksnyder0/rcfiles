@@ -211,9 +211,9 @@ def cmd_prs():
 
 NO_EPIC_RANK = 99
 NO_EPIC_LABEL = "No epic"
-PROJECT_FIELDS = ("type", "id", "title", "state", "epic_id", "created_at",
-                  "due_date", "complexity", "blocker", "link", "epic_group",
-                  "sort_key")
+PROJECT_FIELDS = ("type", "id", "title", "state", "state_type", "epic_id",
+                  "created_at", "due_date", "complexity", "blocker", "link",
+                  "epic_group", "sort_key")
 
 
 def short_api(path, **params):
@@ -223,23 +223,20 @@ def short_api(path, **params):
     return json.loads(sh(args))
 
 
-def done_state_ids():
+def workflow_states():
+    """{state_id: {"name", "type"}} across every workflow. One fetch per run."""
+    return {
+        state["id"]: {"name": state["name"], "type": state["type"]}
+        for workflow in short_api("/workflows")
+        for state in workflow["states"]
+    }
+
+
+def done_state_ids(states=None):
     """State ids whose workflow-state `type` is 'done'. Never match on state
     name: 'Blocked' is `unstarted` in one workflow and `started` in another."""
-    return {
-        state["id"]
-        for workflow in short_api("/workflows")
-        for state in workflow["states"]
-        if state["type"] == "done"
-    }
-
-
-def _state_names():
-    return {
-        state["id"]: state["name"]
-        for workflow in short_api("/workflows")
-        for state in workflow["states"]
-    }
+    states = states if states is not None else workflow_states()
+    return {sid for sid, s in states.items() if s["type"] == "done"}
 
 
 def search_stories(query):
@@ -270,18 +267,20 @@ def estimate_to_complexity(estimate):
 
 def fetch_project_work():
     mention = short_api("/member")["mention_name"]
-    done = done_state_ids()
-    names = _state_names()
+    states = workflow_states()
+    done = done_state_ids(states)
 
     stories = []
     for s in search_stories(f"owner:{mention} !is:done"):
         if s["workflow_state_id"] in done:
             continue  # belt and braces behind `!is:done`
+        state = states.get(s["workflow_state_id"], {})
         stories.append({
             "type": "story",
             "id": s["id"],
             "title": s["name"],
-            "state": names.get(s["workflow_state_id"], ""),
+            "state": state.get("name", ""),
+            "state_type": state.get("type"),
             "epic_id": s.get("epic_id"),
             "created_at": parse_date(s["created_at"]),
             "due_date": parse_date(s.get("deadline")),
@@ -298,6 +297,7 @@ def fetch_project_work():
             "id": e["id"],
             "title": e["name"],
             "state": e.get("state", ""),
+            "state_type": None,  # epic states are their own vocabulary
             "epic_id": None,
             "created_at": parse_date(e["created_at"]),
             "due_date": parse_date(e.get("deadline")),
@@ -490,6 +490,18 @@ TODO_SECTIONS = ("Today", "Backlog")
 TODO_DUE_RE = re.compile(r"due\s*\[\[(\d{4}-\d{2}-\d{2})\]\]")
 SOURCE_RANK = {"commitment": 0, "project": 1, "todo": 2}
 
+# Applied only as the final tiebreak, after the spec's tier/due_date/complexity/
+# source ordering. Shortcut estimates and deadlines are mostly unset in
+# practice, so without this every undated story ties and ordering falls to
+# story id. "What I've already started" is the better answer to "what could I
+# finish this week". Unknown or missing types sort last.
+STATE_RANK = {"started": 0, "unstarted": 1, "backlog": 2}
+STATE_MISSING_RANK = 3
+
+
+def state_rank(state_type):
+    return STATE_RANK.get(state_type, STATE_MISSING_RANK)
+
 
 def load_todos():
     """Unindented open checkboxes under ## Today / ## Backlog. Sub-items are
@@ -527,16 +539,18 @@ def important_pool(ref=None):
         pool.append({"label": note.get("title", ""), "source": "commitment",
                      "due_date": note.get("due_date"),
                      "complexity": note.get("complexity"),
+                     "state_type": None,
                      "link": note.get("link")})
     for note in load_project_stories():
         pool.append({"label": note.get("title", ""), "source": "project",
                      "due_date": note.get("due_date"),
                      "complexity": note.get("complexity"),
+                     "state_type": note.get("state_type"),
                      "link": note.get("link")})
     for todo in load_todos():
         pool.append({"label": todo["label"], "source": "todo",
                      "due_date": todo["due_date"], "complexity": None,
-                     "link": None})
+                     "state_type": None, "link": None})
 
     def key(item):
         due = parse_date(item["due_date"])
@@ -547,7 +561,8 @@ def important_pool(ref=None):
         else:
             tier = 1
         return (tier, due or FAR_FUTURE,
-                complexity_rank(item["complexity"]), SOURCE_RANK[item["source"]])
+                complexity_rank(item["complexity"]), SOURCE_RANK[item["source"]],
+                state_rank(item["state_type"]))
 
     for item in pool:
         due = parse_date(item["due_date"])
@@ -565,6 +580,8 @@ def render_important(items):
             bits.append(("overdue " if item["overdue"] else "due ") + item["due_date"])
         if item["complexity"]:
             bits.append(item["complexity"])
+        if item["state_type"]:
+            bits.append(item["state_type"])
         label = f"[{item['label']}]({item['link']})" if item["link"] else item["label"]
         lines.append(f"- [ ] {label} ({', '.join(bits)})")
     return "\n".join(lines)

@@ -363,6 +363,29 @@ class TestProjectWork(unittest.TestCase):
         self.assertTrue(keep.exists())
         self.assertIn("hand written", keep.read_text())
 
+    def test_state_type_is_stored_alongside_the_display_name(self):
+        """IMPORTANT TODAY ranks undated stories by state, and the spec forbids
+        matching on state name -- so the type has to be persisted per note."""
+        sod.cmd_project_work()
+        note = sod.read_note(sod.PROJECT_DIR / "story-222656.md")
+        self.assertEqual(note["state"], "In Progress")
+        self.assertEqual(note["state_type"], "started")
+        backlog = sod.read_note(sod.PROJECT_DIR / "story-228166.md")
+        self.assertEqual(backlog["state"], "Backlog")
+        self.assertEqual(backlog["state_type"], "backlog")
+
+    def test_workflows_are_fetched_once_per_run(self):
+        calls = []
+        inner = sod.short_api
+
+        def counting(path, **params):
+            calls.append(path)
+            return inner(path, **params)
+
+        sod.short_api = counting
+        sod.fetch_project_work()
+        self.assertEqual(calls.count("/workflows"), 1)
+
     def test_search_follows_the_next_cursor(self):
         """Shortcut caps page_size at 25; truncating at one page would silently
         drop stories once the list grows past it."""
@@ -510,9 +533,10 @@ class TestImportant(unittest.TestCase):
             "link": f"https://slack/{sod.slugify(title)}",
             "status": status, "sort_key": 0})
 
-    def row(self, kind, rid, title, due, complexity):
+    def row(self, kind, rid, title, due, complexity, state_type="started"):
         sod.write_note(sod.PROJECT_DIR / f"{kind}-{rid}.md", {
-            "type": kind, "id": rid, "title": title, "state": "In Progress",
+            "type": kind, "id": rid, "title": title, "state": "Whatever",
+            "state_type": state_type,
             "epic_id": None, "created_at": "2026-09-01", "due_date": due,
             "complexity": complexity, "blocker": False,
             "link": f"https://app.shortcut.com/huntress/{kind}/{rid}",
@@ -594,6 +618,39 @@ class TestImportant(unittest.TestCase):
 
     def test_empty_pool_renders_placeholder(self):
         self.assertIn("_Nothing", sod.render_important([]))
+
+    def test_undated_stories_rank_started_then_unstarted_then_backlog(self):
+        """With no estimates or deadlines set in Shortcut, every story ties on
+        (tier, due_date, complexity) -- state is the only real signal left."""
+        self.row("story", 1, "Sitting in backlog", None, None, state_type="backlog")
+        self.row("story", 2, "Already started", None, None, state_type="started")
+        self.row("story", 3, "Not started yet", None, None, state_type="unstarted")
+        self.assertEqual(self.labels(), ["Already started",
+                                         "Not started yet",
+                                         "Sitting in backlog"])
+
+    def test_state_rank_never_overrides_due_date_or_complexity(self):
+        self.row("story", 1, "Backlog but due soon", "2026-09-16", None,
+                 state_type="backlog")
+        self.row("story", 2, "Started but undated", None, None,
+                 state_type="started")
+        self.assertEqual(self.labels(), ["Backlog but due soon",
+                                         "Started but undated"])
+
+    def test_state_rank_never_overrides_source_order(self):
+        self.commitment("Tied commitment", "2026-09-20", "medium")
+        self.row("story", 1, "Tied started story", "2026-09-20", "medium",
+                 state_type="started")
+        self.assertEqual(self.labels()[:2], ["Tied commitment",
+                                             "Tied started story"])
+
+    def test_unknown_or_missing_state_type_sorts_last(self):
+        self.row("story", 1, "Story with no state type", None, None,
+                 state_type=None)
+        self.row("story", 2, "Story sitting in backlog", None, None,
+                 state_type="backlog")
+        self.assertEqual(self.labels(), ["Story sitting in backlog",
+                                         "Story with no state type"])
 
 
 class TestDailyNote(unittest.TestCase):
