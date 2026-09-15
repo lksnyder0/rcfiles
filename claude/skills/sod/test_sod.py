@@ -382,5 +382,114 @@ class TestProjectWork(unittest.TestCase):
         self.assertEqual(seen, [None, "TOKEN2"])
 
 
+class TestCommitments(unittest.TestCase):
+    def setUp(self):
+        sod.COMMITMENTS_DIR = Path(tempfile.mkdtemp())
+
+    def add(self, **kw):
+        fields = dict(
+            title="A commitment", summary="s", link="https://slack/x",
+            committed_date="2026-09-14", due_date="2026-09-16",
+            complexity="medium", tags=[],
+        )
+        fields.update(kw)
+        return sod.upsert_commitment(**fields)
+
+    def mark_done(self, path):
+        note = sod.read_note(path)
+        fields = {k: v for k, v in note.items() if not k.startswith("_")}
+        fields["status"] = "done"
+        sod.write_note(path, fields, note.get("_body", ""))
+
+    def test_created_note_has_full_schema_and_defaults_status_open(self):
+        action, path = self.add()
+        self.assertEqual(action, "created")
+        note = sod.read_note(path)
+        for field in ("title", "committed_date", "due_date", "complexity",
+                      "tags", "summary", "link", "status", "sort_key"):
+            self.assertIn(field, note)
+        self.assertEqual(note["status"], "open")
+        self.assertEqual(note["committed_date"], "2026-09-14")
+        self.assertEqual(note["complexity"], "medium")
+
+    def test_file_per_row(self):
+        self.add(link="https://slack/a", title="First thing")
+        self.add(link="https://slack/b", title="Second thing entirely")
+        self.assertEqual(len(list(sod.COMMITMENTS_DIR.glob("*.md"))), 2)
+
+    def test_same_link_twice_is_a_duplicate_not_a_second_row(self):
+        self.add()
+        action, _ = self.add()
+        self.assertEqual(action, "duplicate")
+        self.assertEqual(len(list(sod.COMMITMENTS_DIR.glob("*.md"))), 1)
+
+    def test_restatement_on_later_day_updates_due_date_in_place(self):
+        _, path = self.add(link="https://slack/day1",
+                           title="Send Connor the Elastic user info",
+                           due_date="2026-09-16")
+        action, same = self.add(link="https://slack/day8",
+                                title="Send Connor Ford the Elastic user info please",
+                                due_date="2026-09-23")
+        self.assertEqual(action, "updated")
+        self.assertEqual(same, path)
+        self.assertEqual(len(list(sod.COMMITMENTS_DIR.glob("*.md"))), 1)
+        self.assertEqual(sod.read_note(path)["due_date"], "2026-09-23")
+
+    def test_restatement_does_not_match_a_done_entry(self):
+        _, path = self.add(link="https://slack/day1", title="Unique phrasing here")
+        self.mark_done(path)
+        action, _ = self.add(link="https://slack/day8", title="Unique phrasing here")
+        self.assertEqual(action, "created")
+
+    def test_unrelated_titles_are_two_rows(self):
+        self.add(link="https://slack/a", title="Rotate the Elasticsearch ILM policy")
+        action, _ = self.add(link="https://slack/b",
+                             title="Review Tailscale ACL autoapprovers")
+        self.assertEqual(action, "created")
+
+    def test_sort_overdue_pinned_first_then_due_date_then_complexity(self):
+        self.add(link="l1", title="Future high", due_date="2026-12-01", complexity="high")
+        self.add(link="l2", title="Overdue one", due_date="2026-09-01", complexity="high")
+        self.add(link="l3", title="Due today low", due_date="2026-09-15", complexity="low")
+        self.add(link="l4", title="Undated", due_date=None, complexity="low")
+        self.add(link="l5", title="Due today high", due_date="2026-09-15", complexity="high")
+        sod.cmd_commitments(ref=dt.date(2026, 9, 15))
+        order = [n["title"] for n in sorted(sod.load_commitments(),
+                                            key=lambda n: n["sort_key"])]
+        self.assertEqual(order, ["Overdue one", "Due today low",
+                                 "Due today high", "Future high", "Undated"])
+
+    def test_missing_complexity_sorts_last_within_its_tier(self):
+        self.add(link="l1", title="Same day high", due_date="2026-09-20", complexity="high")
+        self.add(link="l2", title="Same day none", due_date="2026-09-20", complexity=None)
+        sod.cmd_commitments(ref=dt.date(2026, 9, 15))
+        order = [n["title"] for n in sorted(sod.load_commitments(),
+                                            key=lambda n: n["sort_key"])]
+        self.assertEqual(order, ["Same day high", "Same day none"])
+
+    def test_done_entries_stay_on_disk_but_are_excluded_from_ranking(self):
+        _, path = self.add(link="l1", title="Will be marked done")
+        self.add(link="l2", title="Stays open and unrelated")
+        self.mark_done(path)
+        sod.cmd_commitments(ref=dt.date(2026, 9, 15))
+        self.assertTrue(path.exists())
+        self.assertEqual(sod.read_note(path)["status"], "done")
+        ranked = [n["title"] for n in sod.load_commitments()]
+        self.assertEqual(ranked, ["Stays open and unrelated"])
+
+    def test_training_email_uses_the_same_schema(self):
+        action, path = sod.upsert_commitment(
+            title="Complete annual security awareness training",
+            summary="Assigned via email; covers phishing and data handling.",
+            link="https://mail.google.com/mail/u/0/#inbox/abc123",
+            committed_date="2026-09-12", due_date="2026-09-30",
+            complexity="low", tags=["training", "compliance"])
+        self.assertEqual(action, "created")
+        note = sod.read_note(path)
+        self.assertEqual(note["status"], "open")
+        self.assertEqual(note["tags"], ["training", "compliance"])
+        self.assertEqual(note["committed_date"], "2026-09-12")
+
+
 if __name__ == "__main__":
     unittest.main()
