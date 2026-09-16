@@ -11,6 +11,7 @@ import json
 import os
 import re
 import subprocess
+import time
 from pathlib import Path
 
 VAULT = Path(os.environ.get("SOD_VAULT", "/Users/luke.snyder/code/Vaults/Work"))
@@ -125,10 +126,18 @@ def assign_sort_keys(notes, key_fn):
     return ordered
 
 
-def sh(args):
+def sh(args, retries=2, backoff=1.0):
     """Run a command, return stdout. stderr is discarded: `short` writes a
-    progress spinner there that would otherwise corrupt JSON parsing."""
-    return subprocess.run(args, check=True, capture_output=True, text=True).stdout
+    progress spinner there that would otherwise corrupt JSON parsing.
+    Retries on failure: the Shortcut API intermittently drops the connection
+    (`socket hang up`) on search-style calls; retrying seconds later succeeds."""
+    for attempt in range(retries + 1):
+        try:
+            return subprocess.run(args, check=True, capture_output=True, text=True).stdout
+        except subprocess.CalledProcessError:
+            if attempt == retries:
+                raise
+            time.sleep(backoff)
 
 
 # --- PR REVIEW BACKLOG -------------------------------------------------------

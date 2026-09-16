@@ -2,6 +2,7 @@ import datetime as dt
 import os
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 _TMP = tempfile.mkdtemp()
@@ -77,6 +78,29 @@ class TestHelpers(unittest.TestCase):
         out = sod.assign_sort_keys(notes, lambda x: x["k"])
         self.assertEqual([x["n"] for x in out], ["a", "b", "c"])
         self.assertEqual([x["sort_key"] for x in out], [0, 1, 2])
+
+    def test_sh_retries_transient_failure_then_returns(self):
+        calls = []
+
+        def fake_run(args, **kwargs):
+            calls.append(args)
+            if len(calls) < 3:
+                raise sod.subprocess.CalledProcessError(1, args)
+            return unittest.mock.Mock(stdout="ok")
+
+        with unittest.mock.patch.object(sod.subprocess, "run", fake_run), \
+             unittest.mock.patch.object(sod.time, "sleep", lambda _: None):
+            self.assertEqual(sod.sh(["whatever"]), "ok")
+        self.assertEqual(len(calls), 3)
+
+    def test_sh_raises_after_exhausting_retries(self):
+        def fake_run(args, **kwargs):
+            raise sod.subprocess.CalledProcessError(1, args)
+
+        with unittest.mock.patch.object(sod.subprocess, "run", fake_run), \
+             unittest.mock.patch.object(sod.time, "sleep", lambda _: None):
+            with self.assertRaises(sod.subprocess.CalledProcessError):
+                sod.sh(["whatever"], retries=2)
 
 
 class TestPrBacklog(unittest.TestCase):
