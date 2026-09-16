@@ -83,12 +83,12 @@ class TestPrBacklog(unittest.TestCase):
     """Fixtures mirror live 2026-09-15 data plus the edge cases the spec names."""
 
     FIXTURES = {
-        "assignee": [
+        "review-requested": [
             {"number": 1567, "title": "Tailscale operator", "isDraft": False,
              "createdAt": "2026-09-03T19:14:55Z",
              "url": "https://github.com/huntresslabs/infra-k8s/pull/1567",
              "repository": {"nameWithOwner": "huntresslabs/infra-k8s"}},
-            {"number": 42, "title": "My own draft, assigned to me", "isDraft": True,
+            {"number": 42, "title": "Draft, requested directly of me", "isDraft": True,
              "createdAt": "2026-01-02T00:00:00Z",
              "url": "https://github.com/huntresslabs/infra-aws/pull/42",
              "repository": {"nameWithOwner": "huntresslabs/infra-aws"}},
@@ -127,8 +127,8 @@ class TestPrBacklog(unittest.TestCase):
         self._real = sod.gh_json
 
         def fake(args):
-            if "--assignee" in args:
-                return self.FIXTURES["assignee"]
+            if "--review-requested" in args and "@me" in args:
+                return self.FIXTURES["review-requested"]
             if "huntresslabs/infrastructure-sre" in args:
                 return self.FIXTURES["team:infrastructure-sre"]
             if "huntresslabs/idex" in args:
@@ -153,9 +153,9 @@ class TestPrBacklog(unittest.TestCase):
     def test_pr_matching_two_criteria_appears_once_with_both_reasons(self):
         hits = [p for p in sod.collect_prs() if p["number"] == 1567]
         self.assertEqual(len(hits), 1)
-        self.assertEqual(hits[0]["reasons"], ["assignee", "team:infrastructure-sre"])
+        self.assertEqual(hits[0]["reasons"], ["review-requested", "team:infrastructure-sre"])
 
-    def test_own_draft_kept_when_assigned_to_me(self):
+    def test_own_draft_kept_when_review_requested_directly_of_me(self):
         self.assertIn(42, [p["number"] for p in sod.collect_prs()])
 
     def test_team_requested_draft_excluded(self):
@@ -169,8 +169,8 @@ class TestPrBacklog(unittest.TestCase):
         self.assertEqual(row["repo"], "huntresslabs/infra-elastic")
 
     def test_author_only_pr_is_absent(self):
-        """A PR authored by me but neither assigned nor team-requested must not
-        appear: `--author` is never queried."""
+        """A PR authored by me but neither review-requested nor team-requested
+        must not appear: `--author` is never queried."""
         self.assertNotIn(9999, [p["number"] for p in sod.collect_prs()])
         self.assertFalse(any("--author" in query for _, _, query in sod.PR_QUERIES))
 
