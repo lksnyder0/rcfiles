@@ -132,15 +132,15 @@ def sh(args):
 
 
 # --- PR REVIEW BACKLOG -------------------------------------------------------
-# Four selection criteria, merged and deduped by (repo, number). "Assigned
-# directly to me" is GitHub's `assignee` — never `author`, and never
-# `review-requested`, which the two team criteria already cover.
+# Four selection criteria, merged and deduped by (repo, number). `author` is
+# never queried. `review-requested @me` covers direct requests of me,
+# separate from the two team criteria.
 
 PR_FIELDS = "number,title,url,createdAt,isDraft"
 
 PR_QUERIES = [
-    ("assignee", True, [
-        "gh", "search", "prs", "--assignee", "@me", "--state", "open",
+    ("review-requested", True, [
+        "gh", "search", "prs", "--review-requested", "@me", "--state", "open",
         "--owner", "huntresslabs", "--json", PR_FIELDS + ",repository",
         "--limit", "100"]),
     ("team:infrastructure-sre", False, [
