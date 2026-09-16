@@ -6,11 +6,11 @@ allowed-tools: Bash(gh *), Bash(python3 *), Glob, Read, Write, Edit, mcp__shortc
 
 # End-of-Day Summary
 
-Generate a structured daily note by gathering activity from Shortcut, GitHub, Slack, specs, Claude Code sessions, and TODO.md. Write the daily note, update TODO.md, and update Obsidian Notes.
+Generate a structured daily note by gathering activity from Shortcut, GitHub, Slack, specs, Claude Code sessions, and the Commitments pool of self-directed tasks. Write the daily note, add suggested tasks to the Commitments pool, and update Obsidian Notes.
 
 **Vault root:** `/Users/luke.snyder/code/Vaults/Work`
 **Daily note path:** `Daily notes/YYYY/MM-<Month>/YYYY-MM-DD.md` (use today's date, e.g., `Daily notes/2026/03-March/2026-03-30.md`)
-**TODO.md path:** `TODO.md` (relative to vault root)
+**Commitments CLI:** `python3 ~/.claude/skills/sod/sod.py` (self-directed tasks live in `Commitments/`, managed via `todo-list` / `todo-add` — see the `todo` skill)
 **Specs path:** `Specs/` (relative to vault root)
 **Plans path:** `Plans/` (relative to vault root)
 **Notes path:** `Notes/` (relative to vault root)
@@ -160,17 +160,20 @@ If the session index directory does not exist, contains no files, or files fail 
 
 If no sessions match today's date, skip this section.
 
-### 1f. TODO.md
+### 1f. Commitments pool (self-directed tasks)
 
-1. Read `Vaults/Work/TODO.md`
-2. Extract all items from the `## Today` and `## Backlog` sections
+1. Run:
+   ```bash
+   python3 ~/.claude/skills/sod/sod.py todo-list --status open
+   ```
+2. Parse the listed open self-directed tasks.
 3. These are used later for:
    - Cross-referencing against detected promised action items (to avoid suggesting duplicates)
    - Generating the "tomorrow" recommendation
 
 ### All Sources Check
 
-If ALL data sources returned unavailable or empty results (no stories, no PRs, no Slack messages, no specs, no Claude sessions, and TODO.md is empty), stop here — do not proceed to synthesis or write any files.
+If ALL data sources returned unavailable or empty results (no stories, no PRs, no Slack messages, no specs, no Claude sessions, and the Commitments pool is empty), stop here — do not proceed to synthesis or write any files.
 
 ## Step 2: Synthesize
 
@@ -222,14 +225,14 @@ For each session with open (incomplete) tasks detected in Step 1e, add them to t
 
 1. Collect all commitment-language matches from Slack messages (gathered in Step 1c).
 2. For each detected commitment:
-   - Check if a matching item already exists in TODO.md (fuzzy match on description keywords)
+   - Check if a matching item already exists in the Commitments pool (from Step 1f) (fuzzy match on description keywords)
    - If no match found, add it to the **Suggested TODOs** list with the source context (e.g., "promised in #sre-team")
 3. If no commitments are detected AND no open session tasks exist (from Step 2.5), omit the Suggested TODOs section.
 
 ### Tomorrow Recommendation
 
 Determine the single most important thing to start with tomorrow by combining:
-1. Items in TODO.md `## Today` that are still open (highest priority — user already flagged these)
+1. Open self-directed tasks in the Commitments pool (from Step 1f) (highest priority — user already flagged these)
 2. Open Shortcut stories assigned to user, prioritized by:
    - Stories in the current iteration first
    - Stories closest to completion (e.g., "Ready for Review" > "In Development")
@@ -252,7 +255,7 @@ Build the daily note content with these sections (omit any section that has no d
    If multiple models were used, list per-model costs in a parenthetical: `(sonnet-4-6: $X.XX, haiku-4-5: $X.XX)`. Omit the cost line if `total_cost_usd` is 0.
 6. `## Knowledge Base Updates` — updates to existing Obsidian Notes based on all sources (merged PRs, completed stories, specs, Slack decisions, research sessions). For each Note, list the updates with source references.
 7. `## Suggested New Notes` — topics from today's activity that don't match existing Notes and have ongoing relevance. Show the proposed Note filename and a brief description of what it would contain.
-8. `## Suggested TODOs` — detected commitments not in TODO.md, plus open tasks from Claude sessions
+8. `## Suggested TODOs` — detected commitments not already in the Commitments pool, plus open tasks from Claude sessions
 9. `## Tomorrow` — single highest-priority recommendation
 
 ## Step 3: Write Output
@@ -285,14 +288,13 @@ For each spec found in Step 1d:
 - If it does not already contain a backlink to today's daily note, insert `> Daily note: [[YYYY-MM-DD]]` immediately after the YAML frontmatter closing `---` delimiter (if present), with a blank line before the first heading. If no frontmatter exists, insert it as the first line of the file.
 - Write the updated spec file
 
-### 3c. Update TODO.md
+### 3c. Add Suggested TODOs to the Commitments pool
 
-1. Read `Vaults/Work/TODO.md`
-2. Add all Suggested TODOs to the `## Backlog` section in a single edit:
-   ```
-   - [ ] Description ([[YYYY-MM-DD]])
-   ```
-3. Write the updated TODO.md once
+For each Suggested TODO, run one call:
+```bash
+python3 ~/.claude/skills/sod/sod.py todo-add --title "<description>"
+```
+Only pass `--due-date` or `--complexity` if the surrounding context (Step 2) already determined one — do not invent them. The CLI owns dedup (`created`/`duplicate`/`updated`), so no read-before-write is needed here.
 
 ### 3d. Update Obsidian Notes (Knowledge Base)
 
@@ -352,4 +354,4 @@ Use these conventions throughout all written content:
 ### Completion
 
 After writing all files, output a summary line:
-> EOD summary written to `Daily notes/YYYY-MM-DD.md`. [N] TODOs added to TODO.md. [N] specs backlinked. [N] Notes updated. [N] Notes created.
+> EOD summary written to `Daily notes/YYYY-MM-DD.md`. [N] self-directed tasks added to the Commitments pool. [N] specs backlinked. [N] Notes updated. [N] Notes created.

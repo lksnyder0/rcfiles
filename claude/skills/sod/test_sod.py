@@ -1,3 +1,4 @@
+import argparse
 import datetime as dt
 import os
 import tempfile
@@ -424,6 +425,24 @@ class TestCommitments(unittest.TestCase):
         fields["status"] = "done"
         sod.write_note(path, fields, note.get("_body", ""))
 
+    def mark_status(self, path, status):
+        note = sod.read_note(path)
+        fields = {k: v for k, v in note.items() if not k.startswith("_")}
+        fields["status"] = status
+        sod.write_note(path, fields, note.get("_body", ""))
+
+    def test_waiting_status_excluded_from_default_load(self):
+        _, path = self.add(link="l1", title="Blocked on someone")
+        self.mark_status(path, "waiting")
+        self.add(link="l2", title="Still open")
+        self.assertEqual([n["title"] for n in sod.load_commitments()], ["Still open"])
+
+    def test_waiting_status_included_with_include_done_true(self):
+        _, path = self.add(link="l1", title="Blocked on someone")
+        self.mark_status(path, "waiting")
+        titles = [n["title"] for n in sod.load_commitments(include_done=True)]
+        self.assertIn("Blocked on someone", titles)
+
     def test_created_note_has_full_schema_and_defaults_status_open(self):
         action, path = self.add()
         self.assertEqual(action, "created")
@@ -541,10 +560,8 @@ class TestImportant(unittest.TestCase):
         root = Path(tempfile.mkdtemp())
         sod.COMMITMENTS_DIR = root / "Commitments"
         sod.PROJECT_DIR = root / "Project Work"
-        sod.TODO_PATH = root / "TODO.md"
         sod.COMMITMENTS_DIR.mkdir(parents=True)
         sod.PROJECT_DIR.mkdir(parents=True)
-        sod.TODO_PATH.write_text("## Today\n\n## Backlog\n\n## Waiting\n\n## Done\n")
 
     def commitment(self, title, due, complexity, status="open"):
         sod.write_note(sod.COMMITMENTS_DIR / f"{sod.slugify(title)}.md", {
@@ -561,9 +578,6 @@ class TestImportant(unittest.TestCase):
             "complexity": complexity, "blocker": False,
             "link": f"https://app.shortcut.com/huntress/{kind}/{rid}",
             "epic_group": "00 — E", "sort_key": 0})
-
-    def todos(self, body):
-        sod.TODO_PATH.write_text(body)
 
     def labels(self, limit=5):
         return [i["label"] for i in sod.important_pool(self.REF)][:limit]
@@ -585,18 +599,13 @@ class TestImportant(unittest.TestCase):
     def test_missing_complexity_sorts_last_within_tier(self):
         self.row("story", 1, "Undated story no estimate", None, None)
         self.row("story", 2, "Undated story low", None, "low")
-        self.todos("## Today\n- [ ] A plain todo\n")
         labels = self.labels()
         self.assertEqual(labels[0], "Undated story low")
         self.assertIn("Undated story no estimate", labels)
-        self.assertIn("A plain todo", labels)
-        # Both lack complexity, so source order decides: story before todo.
-        self.assertLess(labels.index("Undated story no estimate"),
-                        labels.index("A plain todo"))
 
     def test_tie_on_due_date_and_complexity_breaks_by_source_order(self):
         """Source order still governs, but only inside the overdue band -- it is
-        the one band where commitments, stories, and TODOs coexist."""
+        the one band where commitments and stories coexist."""
         self.commitment("Tied commitment", "2026-09-10", "medium")
         self.row("story", 1, "Tied story", "2026-09-10", "medium",
                  state_type="started")
@@ -613,109 +622,6 @@ class TestImportant(unittest.TestCase):
         self.commitment("Done thing", "2026-09-01", "low", status="done")
         self.commitment("Open thing", "2026-09-02", "low")
         self.assertEqual(self.labels(), ["Open thing"])
-
-    def test_todos_only_top_level_from_today_and_backlog(self):
-        self.todos(
-            "## Today\n- [ ] Top level today\n\t- [ ] Nested child\n"
-            "## Backlog\n- [ ] Top level backlog\n- [x] Already done\n"
-            "## Waiting\n- [ ] Waiting item\n"
-            "## Done\n- [x] Finished\n")
-        labels = [t["label"] for t in sod.load_todos()]
-        self.assertEqual(labels, ["Top level today", "Top level backlog"])
-
-    def test_todo_inline_due_date_is_parsed(self):
-        self.todos("## Backlog\n- [ ] Check the ILM prediction — due [[2026-09-02]]\n")
-        self.assertEqual(sod.load_todos()[0]["due_date"], "2026-09-02")
-
-    def test_children_attach_to_their_root_regardless_of_indent_style(self):
-        """Live TODO.md mixes tab-indented and two-space-indented sub-bullets.
-        Both are children; neither is a root item."""
-        self.todos(
-            "## Backlog\n"
-            "- [ ] Tab parent\n"
-            "\t- [ ] Tab child one\n"
-            "\t- [ ] Tab child two\n"
-            "- [ ] Space parent\n"
-            "  - [ ] Space child one\n"
-            "  - [ ] Space child two\n")
-        todos = sod.load_todos()
-        self.assertEqual([t["label"] for t in todos], ["Tab parent", "Space parent"])
-        self.assertEqual(todos[0]["children"], ["- [ ] Tab child one",
-                                                "- [ ] Tab child two"])
-        self.assertEqual(todos[1]["children"], ["- [ ] Space child one",
-                                                "- [ ] Space child two"])
-
-    def test_completed_children_are_kept_as_body_context(self):
-        """A done sub-bullet is history worth carrying into the commitment."""
-        self.todos("## Backlog\n- [ ] Parent\n\t- [x] Already verified\n"
-                   "\t- [ ] Still open\n")
-        self.assertEqual(sod.load_todos()[0]["children"],
-                         ["- [x] Already verified", "- [ ] Still open"])
-
-    def test_root_with_no_children_has_empty_list(self):
-        self.todos("## Backlog\n- [ ] Lonely item\n")
-        self.assertEqual(sod.load_todos()[0]["children"], [])
-
-    def test_children_of_a_completed_root_do_not_graft_onto_the_previous_item(self):
-        self.todos("## Backlog\n"
-                   "- [ ] Open item\n"
-                   "- [x] Completed item\n"
-                   "\t- [ ] Child of the completed item\n")
-        todos = sod.load_todos()
-        self.assertEqual([t["label"] for t in todos], ["Open item"])
-        self.assertEqual(todos[0]["children"], [])
-
-    def test_blank_line_inside_a_group_does_not_end_it(self):
-        self.todos("## Backlog\n- [ ] Parent\n\n\t- [ ] Child after a blank\n")
-        self.assertEqual(sod.load_todos()[0]["children"],
-                         ["- [ ] Child after a blank"])
-
-    def test_todo_link_is_stable_and_unique_per_item(self):
-        a = sod.todo_link("Watch ACNS flow logs for the portal namespace")
-        b = sod.todo_link("Watch ACNS flow logs for the portal namespace")
-        c = sod.todo_link("Merge the production portal network-policy PR")
-        self.assertEqual(a, b)
-        self.assertNotEqual(a, c)
-        self.assertTrue(a.startswith("todo://"))
-
-    def test_todo_link_survives_retitling(self):
-        """Dedup keys off the raw TODO text, so the commitment can be retitled
-        freely without the migration re-creating it."""
-        raw = "**Remove `portal-app-egress-catchall`** from staging + production"
-        self.assertEqual(sod.todo_link(raw), sod.todo_link(raw))
-        self.assertNotIn("*", sod.todo_link(raw))
-
-    def test_migrated_todo_is_not_double_counted(self):
-        """TODO.md is left intact after migration, so a TODO that already has a
-        commitment must not appear twice in the pool."""
-        raw = "Finish Huntress Community Apps ADR"
-        self.todos(f"## Backlog\n- [ ] {raw}\n- [ ] Not yet migrated\n")
-        sod.upsert_commitment(title="Finish the Community Apps ADR",
-                              summary="Migrated from TODO.md.",
-                              link=sod.todo_link(raw),
-                              committed_date="2026-09-15", complexity="medium")
-        labels = self.labels()
-        self.assertEqual(labels.count("Finish the Community Apps ADR"), 1)
-        self.assertNotIn(raw, labels)
-        self.assertIn("Not yet migrated", labels)
-
-    def test_dedup_ignores_a_done_commitment(self):
-        """Completing the commitment must not silently resurrect the TODO."""
-        raw = "Finish Huntress Community Apps ADR"
-        self.todos(f"## Backlog\n- [ ] {raw}\n")
-        _, path = sod.upsert_commitment(
-            title="Finish the ADR", summary="s", link=sod.todo_link(raw),
-            committed_date="2026-09-15", complexity="medium")
-        note = sod.read_note(path)
-        fields = {k: v for k, v in note.items() if not k.startswith("_")}
-        fields["status"] = "done"
-        sod.write_note(path, fields, note.get("_body", ""))
-        self.assertEqual(self.labels(), [])
-
-    def test_todo_with_overdue_inline_date_outranks_future_commitment(self):
-        self.todos("## Today\n- [ ] Overdue todo — due [[2026-09-01]]\n")
-        self.commitment("Future commitment", "2026-09-30", "low")
-        self.assertEqual(self.labels()[0], "Overdue todo — due [[2026-09-01]]")
 
     def test_limit_is_at_most_five(self):
         for i in range(9):
@@ -751,14 +657,12 @@ class TestImportant(unittest.TestCase):
         self.assertEqual(self.labels(), ["Unstarted low, due later",
                                          "Unstarted high, due soon"])
 
-    def test_unstarted_outranks_non_overdue_commitments_and_todos(self):
+    def test_unstarted_outranks_non_overdue_commitments(self):
         self.commitment("Commitment due next week", "2026-09-22", "low")
-        self.todos("## Today\n- [ ] A plain todo\n")
         self.row("story", 1, "Unstarted story", None, "high",
                  state_type="unstarted")
         self.assertEqual(self.labels(), ["Unstarted story",
-                                         "Commitment due next week",
-                                         "A plain todo"])
+                                         "Commitment due next week"])
 
     def test_backlog_stories_are_excluded_entirely(self):
         """Backlog work still needs shaping, so it is not an answer to 'what
@@ -799,8 +703,6 @@ class TestDailyNote(unittest.TestCase):
         sod.DAILY_DIR = self.root / "Daily notes"
         sod.COMMITMENTS_DIR = self.root / "Commitments"
         sod.PROJECT_DIR = self.root / "Project Work"
-        sod.TODO_PATH = self.root / "TODO.md"
-        sod.TODO_PATH.write_text("## Today\n- [ ] Something to do\n")
         self._real = sod.gh_json
         sod.gh_json = lambda args: []
 
@@ -868,6 +770,151 @@ class TestDailyNote(unittest.TestCase):
     def test_window_falls_back_to_yesterday_with_no_notes(self):
         self.assertEqual(sod.cmd_window(),
                          str(sod.today() - dt.timedelta(days=1)))
+
+
+class TestTodoAdd(unittest.TestCase):
+    def setUp(self):
+        sod.COMMITMENTS_DIR = Path(tempfile.mkdtemp())
+
+    def args(self, title, summary="", due_date=None, complexity=None, tags=""):
+        return argparse.Namespace(title=title, summary=summary, due_date=due_date,
+                                  complexity=complexity, tags=tags)
+
+    def test_creates_commitment_with_todo_link_and_open_status(self):
+        out = sod.cmd_todo_add(self.args("Rotate the Elasticsearch ILM policy"))
+        self.assertTrue(out.startswith("created:"))
+        notes = sod.load_commitments()
+        self.assertEqual(len(notes), 1)
+        self.assertEqual(notes[0]["title"], "Rotate the Elasticsearch ILM policy")
+        self.assertTrue(notes[0]["link"].startswith("todo://"))
+        self.assertEqual(notes[0]["status"], "open")
+
+    def test_due_date_complexity_and_tags_are_stored(self):
+        sod.cmd_todo_add(self.args("Ship the report", summary="s",
+                                   due_date="2026-09-20", complexity="high",
+                                   tags="urgent, reports"))
+        note = sod.load_commitments()[0]
+        self.assertEqual(note["due_date"], "2026-09-20")
+        self.assertEqual(note["complexity"], "high")
+        self.assertEqual(note["tags"], ["urgent", "reports"])
+
+    def test_readding_the_same_title_is_a_duplicate(self):
+        sod.cmd_todo_add(self.args("Same task"))
+        out = sod.cmd_todo_add(self.args("Same task"))
+        self.assertTrue(out.startswith("duplicate:"))
+        self.assertEqual(len(sod.load_commitments()), 1)
+
+
+class TestTodoList(unittest.TestCase):
+    REF = dt.date(2026, 9, 15)
+
+    def setUp(self):
+        sod.COMMITMENTS_DIR = Path(tempfile.mkdtemp())
+
+    def add(self, title, status="open", due_date=None, complexity=None):
+        sod.write_note(sod.COMMITMENTS_DIR / f"{sod.slugify(title)}.md", {
+            "title": title, "committed_date": "2026-09-01", "due_date": due_date,
+            "complexity": complexity, "tags": [], "summary": "s",
+            "link": f"todo://{sod.slugify(title)}", "status": status, "sort_key": 0})
+
+    def test_default_status_is_open_and_sorted_overdue_first(self):
+        self.add("Overdue one", due_date="2026-09-01", complexity="high")
+        self.add("Future one", due_date="2026-09-30", complexity="low")
+        self.add("Waiting one", status="waiting")
+        out = sod.cmd_todo_list(status="open", ref=self.REF)
+        self.assertEqual(out.splitlines(), [
+            "1. Overdue one (open, due 2026-09-01, high)",
+            "2. Future one (open, due 2026-09-30, low)",
+        ])
+
+    def test_status_all_includes_everything(self):
+        self.add("Open one")
+        self.add("Waiting one", status="waiting")
+        self.add("Done one", status="done")
+        out = sod.cmd_todo_list(status="all", ref=self.REF)
+        self.assertEqual(len(out.splitlines()), 3)
+
+    def test_status_waiting_filters_to_waiting_only(self):
+        self.add("Open one")
+        self.add("Waiting one", status="waiting")
+        out = sod.cmd_todo_list(status="waiting", ref=self.REF)
+        self.assertEqual(out.splitlines(), ["1. Waiting one (waiting)"])
+
+    def test_empty_list_renders_placeholder(self):
+        self.assertIn("_No matching todos", sod.cmd_todo_list(status="open", ref=self.REF))
+
+
+class TestResolveTodo(unittest.TestCase):
+    def test_resolve_by_number(self):
+        notes = [{"title": "A"}, {"title": "B"}]
+        self.assertEqual(sod.resolve_todo("2", notes)["title"], "B")
+
+    def test_resolve_by_number_out_of_range_raises(self):
+        with self.assertRaises(ValueError):
+            sod.resolve_todo("5", [{"title": "A"}])
+
+    def test_resolve_by_substring_case_insensitive(self):
+        notes = [{"title": "Rotate the ILM policy"}, {"title": "Ship the report"}]
+        self.assertEqual(sod.resolve_todo("ilm", notes)["title"], "Rotate the ILM policy")
+
+    def test_resolve_no_match_raises(self):
+        with self.assertRaises(ValueError):
+            sod.resolve_todo("nonexistent", [{"title": "A"}])
+
+    def test_resolve_ambiguous_match_raises(self):
+        notes = [{"title": "Ship the report"}, {"title": "Ship the deck"}]
+        with self.assertRaises(ValueError):
+            sod.resolve_todo("ship", notes)
+
+
+class TestTodoTransitions(unittest.TestCase):
+    REF = dt.date(2026, 9, 15)
+
+    def setUp(self):
+        sod.COMMITMENTS_DIR = Path(tempfile.mkdtemp())
+
+    def add(self, title, status="open", due_date=None, complexity=None):
+        path = sod.COMMITMENTS_DIR / f"{sod.slugify(title)}.md"
+        sod.write_note(path, {
+            "title": title, "committed_date": "2026-09-01", "due_date": due_date,
+            "complexity": complexity, "tags": [], "summary": "s",
+            "link": f"todo://{sod.slugify(title)}", "status": status, "sort_key": 0})
+        return path
+
+    def test_done_sets_status_and_recomputes_sort_key(self):
+        self.add("Task one", due_date="2026-09-10")
+        path_two = self.add("Task two", due_date="2026-09-05")
+        self.add("Task three", due_date="2026-09-12")
+        out = sod.cmd_todo_done("Task two", ref=self.REF)
+        self.assertEqual(out, "done: Task two")
+        self.assertEqual(sod.read_note(path_two)["status"], "done")
+        remaining = sorted(sod.load_commitments(), key=lambda n: n["sort_key"])
+        self.assertEqual([n["title"] for n in remaining], ["Task one", "Task three"])
+        self.assertEqual([n["sort_key"] for n in remaining], [0, 1])
+
+    def test_wait_sets_status_waiting(self):
+        path = self.add("Blocked task")
+        sod.cmd_todo_wait("Blocked task", ref=self.REF)
+        self.assertEqual(sod.read_note(path)["status"], "waiting")
+
+    def test_move_rejects_invalid_status(self):
+        self.add("Some task")
+        with self.assertRaises(ValueError):
+            sod.cmd_todo_move("Some task", "bogus", ref=self.REF)
+
+    def test_move_sets_a_valid_status(self):
+        path = self.add("Some task")
+        sod.cmd_todo_move("Some task", "waiting", ref=self.REF)
+        self.assertEqual(sod.read_note(path)["status"], "waiting")
+
+    def test_from_status_scopes_which_pool_identifier_resolves_against(self):
+        open_path = self.add("Open task")
+        waiting_path = self.add("Waiting task", status="waiting")
+        sod.cmd_todo_done("1", ref=self.REF)
+        self.assertEqual(sod.read_note(open_path)["status"], "done")
+        self.assertEqual(sod.read_note(waiting_path)["status"], "waiting")
+        sod.cmd_todo_move("1", "open", from_status="waiting", ref=self.REF)
+        self.assertEqual(sod.read_note(waiting_path)["status"], "open")
 
 
 if __name__ == "__main__":

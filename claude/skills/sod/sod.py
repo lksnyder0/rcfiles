@@ -11,12 +11,12 @@ import json
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 VAULT = Path(os.environ.get("SOD_VAULT", "/Users/luke.snyder/code/Vaults/Work"))
 COMMITMENTS_DIR = VAULT / "Commitments"
 PROJECT_DIR = VAULT / "Project Work"
-TODO_PATH = VAULT / "TODO.md"
 DAILY_DIR = VAULT / "Daily notes"
 
 COMPLEXITY_RANK = {"low": 0, "medium": 1, "high": 2}
@@ -387,7 +387,7 @@ def load_commitments(include_done=False):
     notes = [read_note(p) for p in sorted(COMMITMENTS_DIR.glob("*.md"))]
     notes = [n for n in notes if n.get("link")]
     if not include_done:
-        notes = [n for n in notes if n.get("status", "open") != "done"]
+        notes = [n for n in notes if n.get("status", "open") == "open"]
     return notes
 
 
@@ -481,14 +481,93 @@ def cmd_commit_add(args):
     return f"{action}: {path}"
 
 
-# --- IMPORTANT TODAY/THIS WEEK -----------------------------------------------
-# Merges the two Bases with active TODOs, so it cannot be a Base query. Only
-# stories are eligible from PROJECT WORK: an epic is not an atomic item that
-# could be finished this week.
+def cmd_todo_add(args):
+    link = todo_link(args.title)
+    action, path = upsert_commitment(
+        title=args.title, summary=args.summary or "", link=link,
+        committed_date=str(today()), due_date=args.due_date,
+        complexity=args.complexity,
+        tags=[t.strip() for t in args.tags.split(",") if t.strip()])
+    return f"{action}: {path}"
 
-TODO_SECTIONS = ("Today", "Backlog")
-TODO_DUE_RE = re.compile(r"due\s*\[\[(\d{4}-\d{2}-\d{2})\]\]")
-SOURCE_RANK = {"commitment": 0, "project": 1, "todo": 2}
+
+def commitments_by_status(status="open"):
+    notes = load_commitments(include_done=True)
+    if status == "all":
+        return notes
+    return [n for n in notes if n.get("status", "open") == status]
+
+
+def render_todo_list(notes):
+    if not notes:
+        return "_No matching todos._"
+    lines = []
+    for index, note in enumerate(notes, start=1):
+        bits = [note.get("status", "open")]
+        if note.get("due_date"):
+            bits.append(f"due {note['due_date']}")
+        if note.get("complexity"):
+            bits.append(note["complexity"])
+        lines.append(f"{index}. {note.get('title', '')} ({', '.join(bits)})")
+    return "\n".join(lines)
+
+
+def cmd_todo_list(status="open", ref=None):
+    ref = ref or today()
+    notes = sorted(commitments_by_status(status), key=lambda n: commitment_sort_tuple(n, ref))
+    return render_todo_list(notes)
+
+
+STATUS_CHOICES = ("open", "waiting", "done")
+
+
+def resolve_todo(identifier, notes):
+    if re.fullmatch(r"-?\d+", identifier):
+        index = int(identifier)
+        if 1 <= index <= len(notes):
+            return notes[index - 1]
+        raise ValueError(f"no item at position {index} ({len(notes)} listed)")
+    matches = [n for n in notes if identifier.lower() in str(n.get("title", "")).lower()]
+    if len(matches) == 1:
+        return matches[0]
+    if not matches:
+        raise ValueError(f"no todo matching {identifier!r}")
+    titles = ", ".join(repr(n.get("title", "")) for n in matches)
+    raise ValueError(f"ambiguous match for {identifier!r}: {titles}")
+
+
+def _set_status(identifier, from_status, new_status, ref=None):
+    ref = ref or today()
+    notes = sorted(commitments_by_status(from_status),
+                   key=lambda n: commitment_sort_tuple(n, ref))
+    note = resolve_todo(identifier, notes)
+    fields = {k: note.get(k) for k in COMMITMENT_FIELDS}
+    fields["status"] = new_status
+    write_note(note["_path"], fields, note.get("_body", ""))
+    cmd_commitments(ref)
+    return f"{new_status}: {note.get('title', '')}"
+
+
+def cmd_todo_done(identifier, from_status="open", ref=None):
+    return _set_status(identifier, from_status, "done", ref)
+
+
+def cmd_todo_wait(identifier, from_status="open", ref=None):
+    return _set_status(identifier, from_status, "waiting", ref)
+
+
+def cmd_todo_move(identifier, new_status, from_status="open", ref=None):
+    if new_status not in STATUS_CHOICES:
+        raise ValueError(f"invalid status: {new_status}")
+    return _set_status(identifier, from_status, new_status, ref)
+
+
+# --- IMPORTANT TODAY/THIS WEEK -----------------------------------------------
+# Merges the two Bases, so it cannot be a Base query. Only stories are
+# eligible from PROJECT WORK: an epic is not an atomic item that could be
+# finished this week.
+
+SOURCE_RANK = {"commitment": 0, "project": 1}
 
 # Four bands, in render order. Shortcut estimates and deadlines are mostly
 # unset in practice, so ranking undated stories on due_date/complexity alone
@@ -523,59 +602,15 @@ def _due_ord(value):
 
 
 TODO_LINK_PREFIX = "todo://"
-# Any indented checkbox is a child. TODO.md mixes tab and two-space nesting,
-# so match on "is there leading whitespace" rather than a fixed width.
-TODO_CHILD_RE = re.compile(r"^[ \t]+- \[[ xX]\] ")
 
 
 def todo_link(text):
-    """Stable synthetic row key for a TODO-sourced commitment.
+    """Stable synthetic row key for a self-created task's commitment note.
 
-    Derived from the raw TODO line, never from the commitment's title, so the
-    commitment can be retitled freely and the migration still recognises it
-    instead of creating a second row.
+    Derived from the raw title, so re-adding the same title dedupes via
+    `upsert_commitment`'s exact-link match instead of creating a second row.
     """
     return TODO_LINK_PREFIX + slugify(text, limit=80)
-
-
-def load_todos():
-    """Open root checkboxes under ## Today / ## Backlog, each carrying its
-    sub-bullets in `children`.
-
-    Only roots are pool-eligible — sub-items are implementation detail and
-    would flood it. `children` exists so a TODO migrated into a commitment can
-    carry its sub-bullets into the note body; completed children come along
-    too, since they are context worth keeping.
-    """
-    if not TODO_PATH.exists():
-        return []
-    section, todos, collecting = None, [], False
-    for line in TODO_PATH.read_text().splitlines():
-        heading = re.match(r"^##\s+(.+?)\s*$", line)
-        if heading:
-            section, collecting = heading[1], False
-            continue
-        if section not in TODO_SECTIONS:
-            continue
-        if TODO_CHILD_RE.match(line):
-            # Only claim children while the enclosing root is one we kept;
-            # otherwise a completed root's sub-bullets would graft themselves
-            # onto the previous open item.
-            if collecting:
-                todos[-1]["children"].append(line.strip())
-            continue
-        if not line.strip():
-            continue  # blank lines inside a group are not a boundary
-        if not line.startswith("- [ ] "):
-            collecting = False
-            continue
-        text = line[6:].strip()
-        due = TODO_DUE_RE.search(text)
-        todos.append({"label": text, "due_date": due[1] if due else None,
-                      "complexity": None, "link": todo_link(text),
-                      "children": []})
-        collecting = True
-    return todos
 
 
 def load_project_stories():
@@ -602,17 +637,6 @@ def important_pool(ref=None):
                      "complexity": note.get("complexity"),
                      "state_type": note.get("state_type"),
                      "link": note.get("link")})
-    # TODO.md is left intact when items are migrated into Commitments, so a
-    # migrated TODO would otherwise be counted twice. Match on the synthetic
-    # todo:// row key, which is exact — no title guessing. Done commitments
-    # count as migrated too, or completing one would resurrect the TODO.
-    migrated = {n.get("link") for n in load_commitments(include_done=True)}
-    for todo in load_todos():
-        if todo["link"] in migrated:
-            continue
-        pool.append({"label": todo["label"], "source": "todo",
-                     "due_date": todo["due_date"], "complexity": None,
-                     "state_type": None, "link": None})
 
     def key(item):
         due = parse_date(item["due_date"])
@@ -639,7 +663,7 @@ def important_pool(ref=None):
 
 def render_important(items):
     if not items:
-        return "_Nothing ranked — commitments, project work, and TODOs are all empty._"
+        return "_Nothing ranked — commitments and project work are both empty._"
     lines = []
     for item in items:
         bits = [item["source"]]
@@ -656,22 +680,6 @@ def render_important(items):
 
 def cmd_important(ref=None, limit=5):
     return render_important(important_pool(ref)[:limit])
-
-
-def cmd_todos():
-    """Read-only inventory for driving a migration into Commitments. Prints the
-    todo:// key so the same dedup the pool uses can be reproduced by hand."""
-    migrated = {n.get("link") for n in load_commitments(include_done=True)}
-    out = []
-    for todo in load_todos():
-        flag = "MIGRATED" if todo["link"] in migrated else "open"
-        out.append(f"[{flag}] {todo['link']}")
-        out.append(f"    {todo['label']}")
-        if todo["due_date"]:
-            out.append(f"    due: {todo['due_date']}")
-        for child in todo["children"]:
-            out.append(f"      {child}")
-    return "\n".join(out) or "_No open root TODOs._"
 
 
 # --- daily note --------------------------------------------------------------
@@ -757,28 +765,57 @@ def main(argv=None):
     add.add_argument("--complexity", choices=["low", "medium", "high"])
     add.add_argument("--tags", default="", help="comma-separated")
     add.add_argument("--body", help="note body; defaults to a link back to the source")
-    sub.add_parser("todos", help="list open root TODOs with their todo:// keys")
+    ta = sub.add_parser("todo-add", help="create a self-directed task")
+    ta.add_argument("--title", required=True)
+    ta.add_argument("--summary", default="")
+    ta.add_argument("--due-date", dest="due_date")
+    ta.add_argument("--complexity", choices=["low", "medium", "high"])
+    ta.add_argument("--tags", default="", help="comma-separated")
+    tl = sub.add_parser("todo-list", help="list self-directed tasks")
+    tl.add_argument("--status", choices=["open", "waiting", "done", "all"], default="open")
+    td = sub.add_parser("todo-done", help="mark a self-directed task done")
+    td.add_argument("identifier")
+    td.add_argument("--status", dest="from_status", choices=STATUS_CHOICES, default="open")
+    tw = sub.add_parser("todo-wait", help="mark a self-directed task waiting")
+    tw.add_argument("identifier")
+    tw.add_argument("--status", dest="from_status", choices=STATUS_CHOICES, default="open")
+    tm = sub.add_parser("todo-move", help="set a self-directed task's status")
+    tm.add_argument("identifier")
+    tm.add_argument("new_status", choices=STATUS_CHOICES)
+    tm.add_argument("--status", dest="from_status", choices=STATUS_CHOICES, default="open")
     imp = sub.add_parser("important", help="render IMPORTANT TODAY/THIS WEEK")
     imp.add_argument("--limit", type=int, default=5)
     sub.add_parser("window", help="print the Slack/Gmail search cutoff date")
     sub.add_parser("daily-note", help="write today's four SOD sections")
     args = parser.parse_args(argv)
-    if args.cmd == "prs":
-        print(cmd_prs())
-    elif args.cmd == "project-work":
-        print(cmd_project_work())
-    elif args.cmd == "commitments":
-        print(cmd_commitments())
-    elif args.cmd == "commit-add":
-        print(cmd_commit_add(args))
-    elif args.cmd == "important":
-        print(cmd_important(limit=args.limit))
-    elif args.cmd == "todos":
-        print(cmd_todos())
-    elif args.cmd == "window":
-        print(cmd_window())
-    elif args.cmd == "daily-note":
-        print(cmd_daily_note())
+    try:
+        if args.cmd == "prs":
+            print(cmd_prs())
+        elif args.cmd == "project-work":
+            print(cmd_project_work())
+        elif args.cmd == "commitments":
+            print(cmd_commitments())
+        elif args.cmd == "commit-add":
+            print(cmd_commit_add(args))
+        elif args.cmd == "todo-add":
+            print(cmd_todo_add(args))
+        elif args.cmd == "todo-list":
+            print(cmd_todo_list(status=args.status))
+        elif args.cmd == "todo-done":
+            print(cmd_todo_done(args.identifier, args.from_status))
+        elif args.cmd == "todo-wait":
+            print(cmd_todo_wait(args.identifier, args.from_status))
+        elif args.cmd == "todo-move":
+            print(cmd_todo_move(args.identifier, args.new_status, args.from_status))
+        elif args.cmd == "important":
+            print(cmd_important(limit=args.limit))
+        elif args.cmd == "window":
+            print(cmd_window())
+        elif args.cmd == "daily-note":
+            print(cmd_daily_note())
+    except ValueError as e:
+        print(str(e), file=sys.stderr)
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
