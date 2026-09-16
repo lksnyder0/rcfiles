@@ -605,7 +605,7 @@ class TestImportant(unittest.TestCase):
 
     def test_tie_on_due_date_and_complexity_breaks_by_source_order(self):
         """Source order still governs, but only inside the overdue band -- it is
-        the one band where commitments, stories, and TODOs coexist."""
+        the one band where commitments and stories coexist."""
         self.commitment("Tied commitment", "2026-09-10", "medium")
         self.row("story", 1, "Tied story", "2026-09-10", "medium",
                  state_type="started")

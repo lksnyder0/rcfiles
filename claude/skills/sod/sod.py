@@ -11,6 +11,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 VAULT = Path(os.environ.get("SOD_VAULT", "/Users/luke.snyder/code/Vaults/Work"))
@@ -787,30 +788,34 @@ def main(argv=None):
     sub.add_parser("window", help="print the Slack/Gmail search cutoff date")
     sub.add_parser("daily-note", help="write today's four SOD sections")
     args = parser.parse_args(argv)
-    if args.cmd == "prs":
-        print(cmd_prs())
-    elif args.cmd == "project-work":
-        print(cmd_project_work())
-    elif args.cmd == "commitments":
-        print(cmd_commitments())
-    elif args.cmd == "commit-add":
-        print(cmd_commit_add(args))
-    elif args.cmd == "todo-add":
-        print(cmd_todo_add(args))
-    elif args.cmd == "todo-list":
-        print(cmd_todo_list(status=args.status))
-    elif args.cmd == "todo-done":
-        print(cmd_todo_done(args.identifier, args.from_status))
-    elif args.cmd == "todo-wait":
-        print(cmd_todo_wait(args.identifier, args.from_status))
-    elif args.cmd == "todo-move":
-        print(cmd_todo_move(args.identifier, args.new_status, args.from_status))
-    elif args.cmd == "important":
-        print(cmd_important(limit=args.limit))
-    elif args.cmd == "window":
-        print(cmd_window())
-    elif args.cmd == "daily-note":
-        print(cmd_daily_note())
+    try:
+        if args.cmd == "prs":
+            print(cmd_prs())
+        elif args.cmd == "project-work":
+            print(cmd_project_work())
+        elif args.cmd == "commitments":
+            print(cmd_commitments())
+        elif args.cmd == "commit-add":
+            print(cmd_commit_add(args))
+        elif args.cmd == "todo-add":
+            print(cmd_todo_add(args))
+        elif args.cmd == "todo-list":
+            print(cmd_todo_list(status=args.status))
+        elif args.cmd == "todo-done":
+            print(cmd_todo_done(args.identifier, args.from_status))
+        elif args.cmd == "todo-wait":
+            print(cmd_todo_wait(args.identifier, args.from_status))
+        elif args.cmd == "todo-move":
+            print(cmd_todo_move(args.identifier, args.new_status, args.from_status))
+        elif args.cmd == "important":
+            print(cmd_important(limit=args.limit))
+        elif args.cmd == "window":
+            print(cmd_window())
+        elif args.cmd == "daily-note":
+            print(cmd_daily_note())
+    except ValueError as e:
+        print(str(e), file=sys.stderr)
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
