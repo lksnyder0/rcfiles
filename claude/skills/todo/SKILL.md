@@ -1,91 +1,62 @@
 ---
 name: todo
-description: "Use when managing tasks - adding, completing, cancelling, listing, or moving items in the central TODO.md file in the Obsidian vault"
+description: "Use when managing self-directed tasks - adding, completing, marking waiting, listing, or moving items in the Commitments/ note pool in the Obsidian vault"
 ---
 
 # TODO Skill
 
-Manage a central task list at `/Users/luke.snyder/code/Vaults/Work/TODO.md` with kanban-style sections, cross-linked to Obsidian daily notes.
+Manage self-directed tasks as Commitments-format notes (file-per-row, frontmatter) in the shared `Commitments/` folder at `/Users/luke.snyder/code/Vaults/Work/Commitments/`, via the `sod.py` CLI at `~/.rcfiles/claude/skills/sod/sod.py`. Self-directed tasks sit in the same pool as Slack/email commitments, distinguished only by a synthetic `todo://<slug>` link instead of a real permalink. The `Commitments.base` Obsidian Base and the `IMPORTANT TODAY/THIS WEEK` daily-note section already render whatever is in this pool — this skill never edits vault files directly, it only calls the CLI.
 
-## TODO.md Format
+## Status vocabulary
 
-```markdown
-# TODO
-
-## Today
-- [ ] Task description #tag #priority ([[YYYY-MM-DD]])
-
-## Backlog
-- [ ] Task description #tag ([[YYYY-MM-DD]])
-
-## Waiting
-- [ ] Task description — waiting on X ([[YYYY-MM-DD]])
-
-## Done
-- [x] Completed task #tag ([[YYYY-MM-DD]]) ✅ [[YYYY-MM-DD]]
-- [-] Cancelled task #tag ([[YYYY-MM-DD]]) ❌ [[YYYY-MM-DD]]
-```
-
-**Conventions:**
-- Standard markdown checkboxes (`- [ ]`, `- [x]`, `- [-]`)
-- Inline `#tags` for topic and priority (Obsidian-compatible)
-- Creation date as daily note link: `([[2026-03-30]])`
-- Completion/cancellation date appended: `✅ [[2026-03-31]]` or `❌ [[2026-03-31]]`
-- Sub-items are indented bullets under the parent task
-- Sections are `## Today`, `## Backlog`, `## Waiting`, `## Done`
+`open` (actionable) | `waiting` (blocked on someone else, informational) | `done` (closed). All three show up in the Base's "All" view; only `open` items appear in the Daily Note View / IMPORTANT TODAY ranking.
 
 ## Actions
 
-Parse the user's `/todo` invocation and execute ONE of these actions:
+Parse the user's `/todo` invocation and run ONE of these with Bash, from `~/.rcfiles/claude/skills/sod/`:
 
-### `/todo add <description> [#tags] [--today|--waiting]`
-1. Read `TODO.md`
-2. Create task line: `- [ ] <description> [#tags] ([[YYYY-MM-DD]])`
-3. Append under `## Backlog` by default, or `## Today` if `--today`, or `## Waiting` if `--waiting`
-4. Write updated `TODO.md`
-5. Confirm to user: "Added to [section]: <description>"
+### `/todo add <description> [#tags] [--due YYYY-MM-DD] [--complexity low|medium|high]`
+
+```bash
+python3 sod.py todo-add --title "<description>" --tags "<tag1,tag2>" --due-date <date> --complexity <level>
+```
+
+Omit `--tags`, `--due-date`, or `--complexity` entirely if the user didn't give one — do not pass empty values. Confirm to the user using the command's own output: `created: <path>`, or `duplicate: <path>` if an identical task already exists.
 
 ### `/todo done <identifier>`
-1. Read `TODO.md`
-2. Find the task matching `<identifier>` (number by position in active sections, or text substring match)
-3. Change `- [ ]` to `- [x]`
-4. Append ` ✅ [[YYYY-MM-DD]]` with today's date
-5. Move the task (and any sub-items) from its current section to `## Done`
-6. Write updated `TODO.md`
-7. Read today's daily note (`Daily notes/YYYY-MM-DD.md`), create if missing
-8. Add under a `## Completed` heading (create heading if missing): `- [x] <task description> ([[TODO]])`
-9. Confirm to user
 
-### `/todo cancel <identifier>`
-1. Same as `done` but change `- [ ]` to `- [-]` and append ` ❌ [[YYYY-MM-DD]]`
-2. Cross-link to daily note under `## Completed`: `- [-] <task description> ([[TODO]])`
+```bash
+python3 sod.py todo-done "<identifier>"
+```
 
-### `/todo list [section]`
-1. Read `TODO.md`
-2. If no section specified: display all tasks in `## Today`, then show counts for Backlog and Waiting
-3. If section specified: display all tasks in that section
-4. Format output as a clean list with section headers
+### `/todo wait <identifier>`
 
-### `/todo move <identifier> <section>`
-1. Read `TODO.md`
-2. Find the task matching `<identifier>`
-3. Remove it (and any sub-items) from its current section
-4. Insert it under the target section (`today`, `backlog`, or `waiting`)
-5. Write updated `TODO.md`
-6. Confirm to user: "Moved to [section]: <description>"
+```bash
+python3 sod.py todo-wait "<identifier>"
+```
 
-## Task Identification
+### `/todo list [status]`
 
-When the user provides an `<identifier>`:
-- **Number**: Count tasks across Today, Backlog, and Waiting sections (1-indexed). Task 1 is the first task in Today, numbering continues through Backlog, then Waiting.
-- **Text**: Substring match against task descriptions (case-insensitive). If ambiguous, ask the user to clarify.
+```bash
+python3 sod.py todo-list --status <open|waiting|done|all>
+```
 
-## Cross-Linking Rules
+Default to `open` if the user doesn't specify a status.
 
-- **On task creation**: Task gets `([[YYYY-MM-DD]])` linking to the daily note for the creation date
-- **On task completion/cancellation**: Task gets `✅ [[YYYY-MM-DD]]` or `❌ [[YYYY-MM-DD]]`, and today's daily note gets an entry under `## Completed`
-- **Daily note path**: `Daily notes/YYYY/MM-<Month>/YYYY-MM-DD.md` relative to vault root (e.g., `Daily notes/2026/03-March/2026-03-30.md`). Create parent directories if they don't exist.
+### `/todo move <identifier> <status>`
 
-## Implementation
+```bash
+python3 sod.py todo-move "<identifier>" <open|waiting|done>
+```
 
-Use Read, Edit, and Write tools directly on the markdown files. No external scripts or plugins needed. The TODO.md file and daily notes are plain markdown in the Obsidian vault at `/Users/luke.snyder/code/Vaults/Work/`.
+Use this for anything `done`/`wait` don't cover directly — most commonly, reopening a `waiting` or `done` item back to `open`.
+
+## Identifier resolution
+
+`<identifier>` is either:
+- **A number** — the 1-indexed position in the current `todo-list` ordering for the pool being acted on (open items by default).
+- **Text** — a case-insensitive substring match against task titles.
+
+If a text identifier matches zero or more than one task, the CLI exits with an error listing the candidate titles — relay that back to the user and ask them to be more specific rather than guessing.
+
+If the user wants to act on an item that isn't currently `open` (e.g. completing something marked `waiting`), pass `--status waiting` (or the relevant status) on the underlying `sod.py` command so the identifier resolves against the right pool.
