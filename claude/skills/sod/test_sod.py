@@ -11,6 +11,11 @@ os.environ["SOD_VAULT"] = _TMP
 import sod
 
 
+class TestCommitmentsVaultBridge(unittest.TestCase):
+    def test_sod_vault_bridges_to_commitments_vault(self):
+        self.assertEqual(os.environ.get("COMMITMENTS_VAULT"), str(sod.VAULT))
+
+
 class TestFrontmatter(unittest.TestCase):
     def setUp(self):
         self.dir = Path(tempfile.mkdtemp())
@@ -429,153 +434,28 @@ class TestProjectWork(unittest.TestCase):
         self.assertEqual(seen, [None, "TOKEN2"])
 
 
-class TestCommitments(unittest.TestCase):
-    def setUp(self):
-        sod.COMMITMENTS_DIR = Path(tempfile.mkdtemp())
-
-    def add(self, **kw):
-        fields = dict(
-            title="A commitment", summary="s", link="https://slack/x",
-            committed_date="2026-09-14", due_date="2026-09-16",
-            complexity="medium", tags=[],
-        )
-        fields.update(kw)
-        return sod.upsert_commitment(**fields)
-
-    def mark_done(self, path):
-        note = sod.read_note(path)
-        fields = {k: v for k, v in note.items() if not k.startswith("_")}
-        fields["status"] = "done"
-        sod.write_note(path, fields, note.get("_body", ""))
-
-    def test_created_note_has_full_schema_and_defaults_status_open(self):
-        action, path = self.add()
-        self.assertEqual(action, "created")
-        note = sod.read_note(path)
-        for field in ("title", "committed_date", "due_date", "complexity",
-                      "tags", "summary", "link", "status", "sort_key"):
-            self.assertIn(field, note)
-        self.assertEqual(note["status"], "open")
-        self.assertEqual(note["committed_date"], "2026-09-14")
-        self.assertEqual(note["complexity"], "medium")
-
-    def test_file_per_row(self):
-        self.add(link="https://slack/a", title="First thing")
-        self.add(link="https://slack/b", title="Second thing entirely")
-        self.assertEqual(len(list(sod.COMMITMENTS_DIR.glob("*.md"))), 2)
-
-    def test_same_link_twice_is_a_duplicate_not_a_second_row(self):
-        self.add()
-        action, _ = self.add()
-        self.assertEqual(action, "duplicate")
-        self.assertEqual(len(list(sod.COMMITMENTS_DIR.glob("*.md"))), 1)
-
-    def test_restatement_on_later_day_updates_due_date_in_place(self):
-        _, path = self.add(link="https://slack/day1",
-                           title="Send Connor the Elastic user info",
-                           due_date="2026-09-16")
-        action, same = self.add(link="https://slack/day8",
-                                title="Send Connor Ford the Elastic user info please",
-                                due_date="2026-09-23")
-        self.assertEqual(action, "updated")
-        self.assertEqual(same, path)
-        self.assertEqual(len(list(sod.COMMITMENTS_DIR.glob("*.md"))), 1)
-        self.assertEqual(sod.read_note(path)["due_date"], "2026-09-23")
-
-    def test_restatement_does_not_match_a_done_entry(self):
-        _, path = self.add(link="https://slack/day1", title="Unique phrasing here")
-        self.mark_done(path)
-        action, _ = self.add(link="https://slack/day8", title="Unique phrasing here")
-        self.assertEqual(action, "created")
-
-    def test_unrelated_titles_are_two_rows(self):
-        self.add(link="https://slack/a", title="Rotate the Elasticsearch ILM policy")
-        action, _ = self.add(link="https://slack/b",
-                             title="Review Tailscale ACL autoapprovers")
-        self.assertEqual(action, "created")
-
-    def test_sort_overdue_pinned_first_then_due_date_then_complexity(self):
-        self.add(link="l1", title="Future high", due_date="2026-12-01", complexity="high")
-        self.add(link="l2", title="Overdue one", due_date="2026-09-01", complexity="high")
-        self.add(link="l3", title="Due today low", due_date="2026-09-15", complexity="low")
-        self.add(link="l4", title="Undated", due_date=None, complexity="low")
-        self.add(link="l5", title="Due today high", due_date="2026-09-15", complexity="high")
-        sod.cmd_commitments(ref=dt.date(2026, 9, 15))
-        order = [n["title"] for n in sorted(sod.load_commitments(),
-                                            key=lambda n: n["sort_key"])]
-        self.assertEqual(order, ["Overdue one", "Due today low",
-                                 "Due today high", "Future high", "Undated"])
-
-    def test_missing_complexity_sorts_last_within_its_tier(self):
-        self.add(link="l1", title="Same day high", due_date="2026-09-20", complexity="high")
-        self.add(link="l2", title="Same day none", due_date="2026-09-20", complexity=None)
-        sod.cmd_commitments(ref=dt.date(2026, 9, 15))
-        order = [n["title"] for n in sorted(sod.load_commitments(),
-                                            key=lambda n: n["sort_key"])]
-        self.assertEqual(order, ["Same day high", "Same day none"])
-
-    def test_done_entries_stay_on_disk_but_are_excluded_from_ranking(self):
-        _, path = self.add(link="l1", title="Will be marked done")
-        self.add(link="l2", title="Stays open and unrelated")
-        self.mark_done(path)
-        sod.cmd_commitments(ref=dt.date(2026, 9, 15))
-        self.assertTrue(path.exists())
-        self.assertEqual(sod.read_note(path)["status"], "done")
-        ranked = [n["title"] for n in sod.load_commitments()]
-        self.assertEqual(ranked, ["Stays open and unrelated"])
-
-    def test_custom_body_is_written_and_default_is_the_source_link(self):
-        """Migrated TODO sub-bullets live in the note body, not the schema."""
-        action, path = self.add(link="https://slack/withbody",
-                               title="Parent item with checks",
-                               body="- [ ] First check\n- [x] Second check")
-        self.assertEqual(action, "created")
-        body = sod.read_note(path)["_body"]
-        self.assertIn("- [ ] First check", body)
-        self.assertIn("- [x] Second check", body)
-
-        _, plain = self.add(link="https://slack/nobody", title="Plain item")
-        self.assertIn("https://slack/nobody", sod.read_note(plain)["_body"])
-
-    def test_body_is_preserved_across_sort_key_recomputation(self):
-        _, path = self.add(link="https://slack/keepbody",
-                           title="Item whose body must survive",
-                           body="- [ ] A sub task worth keeping")
-        sod.cmd_commitments(ref=dt.date(2026, 9, 15))
-        self.assertIn("A sub task worth keeping", sod.read_note(path)["_body"])
-
-    def test_training_email_uses_the_same_schema(self):
-        action, path = sod.upsert_commitment(
-            title="Complete annual security awareness training",
-            summary="Assigned via email; covers phishing and data handling.",
-            link="https://mail.google.com/mail/u/0/#inbox/abc123",
-            committed_date="2026-09-12", due_date="2026-09-30",
-            complexity="low", tags=["training", "compliance"])
-        self.assertEqual(action, "created")
-        note = sod.read_note(path)
-        self.assertEqual(note["status"], "open")
-        self.assertEqual(note["tags"], ["training", "compliance"])
-        self.assertEqual(note["committed_date"], "2026-09-12")
-
-
 class TestImportant(unittest.TestCase):
     REF = dt.date(2026, 9, 15)
 
     def setUp(self):
         root = Path(tempfile.mkdtemp())
-        sod.COMMITMENTS_DIR = root / "Commitments"
         sod.PROJECT_DIR = root / "Project Work"
         sod.TODO_PATH = root / "TODO.md"
-        sod.COMMITMENTS_DIR.mkdir(parents=True)
         sod.PROJECT_DIR.mkdir(parents=True)
         sod.TODO_PATH.write_text("## Today\n\n## Backlog\n\n## Waiting\n\n## Done\n")
+        self.commitments = []
+        self._real_load_commitments = sod.load_commitments
+        sod.load_commitments = lambda include_done=False: [
+            c for c in self.commitments if include_done or c.get("status", "open") != "done"]
+
+    def tearDown(self):
+        sod.load_commitments = self._real_load_commitments
 
     def commitment(self, title, due, complexity, status="open"):
-        sod.write_note(sod.COMMITMENTS_DIR / f"{sod.slugify(title)}.md", {
-            "title": title, "committed_date": "2026-09-01", "due_date": due,
-            "complexity": complexity, "tags": [], "summary": "s",
-            "link": f"https://slack/{sod.slugify(title)}",
-            "status": status, "sort_key": 0})
+        self.commitments.append({
+            "title": title, "due_date": due, "complexity": complexity,
+            "link": f"https://slack/{sod.slugify(title)}", "status": status,
+        })
 
     def row(self, kind, rid, title, due, complexity, state_type="started"):
         sod.write_note(sod.PROJECT_DIR / f"{kind}-{rid}.md", {
@@ -714,10 +594,10 @@ class TestImportant(unittest.TestCase):
         commitment must not appear twice in the pool."""
         raw = "Finish Huntress Community Apps ADR"
         self.todos(f"## Backlog\n- [ ] {raw}\n- [ ] Not yet migrated\n")
-        sod.upsert_commitment(title="Finish the Community Apps ADR",
-                              summary="Migrated from TODO.md.",
-                              link=sod.todo_link(raw),
-                              committed_date="2026-09-15", complexity="medium")
+        self.commitments.append({
+            "title": "Finish the Community Apps ADR", "due_date": None,
+            "complexity": "medium", "link": sod.todo_link(raw), "status": "open",
+        })
         labels = self.labels()
         self.assertEqual(labels.count("Finish the Community Apps ADR"), 1)
         self.assertNotIn(raw, labels)
@@ -727,13 +607,10 @@ class TestImportant(unittest.TestCase):
         """Completing the commitment must not silently resurrect the TODO."""
         raw = "Finish Huntress Community Apps ADR"
         self.todos(f"## Backlog\n- [ ] {raw}\n")
-        _, path = sod.upsert_commitment(
-            title="Finish the ADR", summary="s", link=sod.todo_link(raw),
-            committed_date="2026-09-15", complexity="medium")
-        note = sod.read_note(path)
-        fields = {k: v for k, v in note.items() if not k.startswith("_")}
-        fields["status"] = "done"
-        sod.write_note(path, fields, note.get("_body", ""))
+        self.commitments.append({
+            "title": "Finish the ADR", "due_date": None, "complexity": "medium",
+            "link": sod.todo_link(raw), "status": "done",
+        })
         self.assertEqual(self.labels(), [])
 
     def test_todo_with_overdue_inline_date_outranks_future_commitment(self):
@@ -821,15 +698,17 @@ class TestDailyNote(unittest.TestCase):
     def setUp(self):
         self.root = Path(tempfile.mkdtemp())
         sod.DAILY_DIR = self.root / "Daily notes"
-        sod.COMMITMENTS_DIR = self.root / "Commitments"
         sod.PROJECT_DIR = self.root / "Project Work"
         sod.TODO_PATH = self.root / "TODO.md"
         sod.TODO_PATH.write_text("## Today\n- [ ] Something to do\n")
-        self._real = sod.gh_json
+        self._real_gh_json = sod.gh_json
         sod.gh_json = lambda args: []
+        self._real_load_commitments = sod.load_commitments
+        sod.load_commitments = lambda include_done=False: []
 
     def tearDown(self):
-        sod.gh_json = self._real
+        sod.gh_json = self._real_gh_json
+        sod.load_commitments = self._real_load_commitments
 
     def test_path_uses_year_and_month_folders(self):
         path = sod.daily_note_path(dt.date(2026, 9, 15))
