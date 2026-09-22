@@ -6,7 +6,7 @@ allowed-tools: Bash(python3 *), Read, Glob
 
 # TODO Skill
 
-Manage commitments as individual notes in `/Users/luke.snyder/code/Vaults/Work/Commitments/`, one file per task, frontmatter-driven. This replaces the old single-file `TODO.md` pattern and shares its schema, dedup, and `sort_key` ordering with the `sod` skill — reuse `sod.py` rather than re-implementing any of that here.
+Manage commitments as individual notes in `/Users/luke.snyder/code/Vaults/Work/Commitments/`, one file per task, frontmatter-driven. This replaces the old single-file `TODO.md` pattern and shares its schema, dedup, and `sort_key` ordering with the `sod` skill — reuse `commitments.py` rather than re-implementing any of that here.
 
 **Script:** `~/.claude/skills/commitments/commitments.py` (all commands below assume `python3 ~/.claude/skills/commitments/commitments.py`)
 
@@ -17,7 +17,7 @@ Path: `Commitments/YYYY-MM-DD-<slug>.md`. Frontmatter fields: `title`, `committe
 ## Actions
 
 ### `/todo add <description> [--due YYYY-MM-DD] [--complexity low|medium|high] [#tags] [--summary "..."]`
-1. `link` is the row key `sod.py` dedups on. Manual adds have no natural URL, so synthesize one: `manual://<slugified-description>`.
+1. `link` is the row key `commitments.py` dedups on. Manual adds have no natural URL, so synthesize one: `manual://<slugified-description>`.
 2. ```bash
    python3 ~/.claude/skills/commitments/commitments.py commit-add \
      --title "<description>" \
@@ -40,7 +40,7 @@ Path: `Commitments/YYYY-MM-DD-<slug>.md`. Frontmatter fields: `title`, `committe
 4. Confirm to user.
 
 ### `/todo cancel <identifier>`
-Same as `done`, but `sod.py` only recognizes `open`/`done` — there is no `cancelled` status. Set `status: done`, add `resolved_date`, and prepend `_Cancelled — not pursued._` to the note body so it's distinguishable from a real completion.
+Same as `done`, but `commitments.py` only recognizes `open`/`done` — there is no `cancelled` status. Set `status: done`, add `resolved_date`, and prepend `_Cancelled — not pursued._` to the note body so it's distinguishable from a real completion.
 
 ### `/todo list [status]`
 1. Glob `Commitments/*.md` (skip `.gitkeep`), read frontmatter, default filter `status: open`.
