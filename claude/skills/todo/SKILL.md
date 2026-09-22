@@ -1,91 +1,52 @@
 ---
 name: todo
-description: "Use when managing tasks - adding, completing, cancelling, listing, or moving items in the central TODO.md file in the Obsidian vault"
+description: "Use when managing tasks - adding, completing, cancelling, or listing items as individual commitment notes in the Vaults/Work/Commitments/ folder"
+allowed-tools: Bash(python3 *), Read, Glob
 ---
 
 # TODO Skill
 
-Manage a central task list at `/Users/luke.snyder/code/Vaults/Work/TODO.md` with kanban-style sections, cross-linked to Obsidian daily notes.
+Manage commitments as individual notes in `/Users/luke.snyder/code/Vaults/Work/Commitments/`, one file per task, frontmatter-driven. This replaces the old single-file `TODO.md` pattern and shares its schema, dedup, and `sort_key` ordering with the `sod` skill — reuse `sod.py` rather than re-implementing any of that here.
 
-## TODO.md Format
+**Script:** `~/.claude/skills/sod/sod.py` (all commands below assume `python3 ~/.claude/skills/sod/sod.py`)
 
-```markdown
-# TODO
+## Commitment File Format
 
-## Today
-- [ ] Task description #tag #priority ([[YYYY-MM-DD]])
-
-## Backlog
-- [ ] Task description #tag ([[YYYY-MM-DD]])
-
-## Waiting
-- [ ] Task description — waiting on X ([[YYYY-MM-DD]])
-
-## Done
-- [x] Completed task #tag ([[YYYY-MM-DD]]) ✅ [[YYYY-MM-DD]]
-- [-] Cancelled task #tag ([[YYYY-MM-DD]]) ❌ [[YYYY-MM-DD]]
-```
-
-**Conventions:**
-- Standard markdown checkboxes (`- [ ]`, `- [x]`, `- [-]`)
-- Inline `#tags` for topic and priority (Obsidian-compatible)
-- Creation date as daily note link: `([[2026-03-30]])`
-- Completion/cancellation date appended: `✅ [[2026-03-31]]` or `❌ [[2026-03-31]]`
-- Sub-items are indented bullets under the parent task
-- Sections are `## Today`, `## Backlog`, `## Waiting`, `## Done`
+Path: `Commitments/YYYY-MM-DD-<slug>.md`. Frontmatter fields: `title`, `committed_date`, `due_date` (omit if open-ended), `complexity` (`low`/`medium`/`high`), `tags`, `summary`, `link`, `status` (`open` or `done` — this is the only vocabulary `sod.py` understands, so don't invent others), `sort_key`. On completion/cancellation add `resolved_date: YYYY-MM-DD`. `sort_key` is recomputed by `sod.py commitments`: overdue first, then ascending `due_date`, undated last, complexity as tiebreaker within a tier — never hand-assign it.
 
 ## Actions
 
-Parse the user's `/todo` invocation and execute ONE of these actions:
-
-### `/todo add <description> [#tags] [--today|--waiting]`
-1. Read `TODO.md`
-2. Create task line: `- [ ] <description> [#tags] ([[YYYY-MM-DD]])`
-3. Append under `## Backlog` by default, or `## Today` if `--today`, or `## Waiting` if `--waiting`
-4. Write updated `TODO.md`
-5. Confirm to user: "Added to [section]: <description>"
+### `/todo add <description> [--due YYYY-MM-DD] [--complexity low|medium|high] [#tags] [--summary "..."]`
+1. `link` is the row key `sod.py` dedups on. Manual adds have no natural URL, so synthesize one: `manual://<slugified-description>`.
+2. ```bash
+   python3 ~/.claude/skills/sod/sod.py commit-add \
+     --title "<description>" \
+     --summary "<--summary, or the description itself>" \
+     --link "manual://<slug>" \
+     --committed-date <today> \
+     [--due-date <date>] \
+     --complexity <low|medium|high, default medium> \
+     [--tags <comma-separated>]
+   ```
+3. ```bash
+   python3 ~/.claude/skills/sod/sod.py commitments
+   ```
+4. Report the script's `created`/`updated`/`duplicate` result — don't re-litigate it.
 
 ### `/todo done <identifier>`
-1. Read `TODO.md`
-2. Find the task matching `<identifier>` (number by position in active sections, or text substring match)
-3. Change `- [ ]` to `- [x]`
-4. Append ` ✅ [[YYYY-MM-DD]]` with today's date
-5. Move the task (and any sub-items) from its current section to `## Done`
-6. Write updated `TODO.md`
-7. Read today's daily note (`Daily notes/YYYY-MM-DD.md`), create if missing
-8. Add under a `## Completed` heading (create heading if missing): `- [x] <task description> ([[TODO]])`
-9. Confirm to user
+1. Find the matching file in `Commitments/` (title/filename substring match, case-insensitive; ask to disambiguate if multiple match).
+2. Set `status: done`, add `resolved_date: YYYY-MM-DD` (today).
+3. Run `python3 ~/.claude/skills/sod/sod.py commitments` to recompute ordering.
+4. Confirm to user.
 
 ### `/todo cancel <identifier>`
-1. Same as `done` but change `- [ ]` to `- [-]` and append ` ❌ [[YYYY-MM-DD]]`
-2. Cross-link to daily note under `## Completed`: `- [-] <task description> ([[TODO]])`
+Same as `done`, but `sod.py` only recognizes `open`/`done` — there is no `cancelled` status. Set `status: done`, add `resolved_date`, and prepend `_Cancelled — not pursued._` to the note body so it's distinguishable from a real completion.
 
-### `/todo list [section]`
-1. Read `TODO.md`
-2. If no section specified: display all tasks in `## Today`, then show counts for Backlog and Waiting
-3. If section specified: display all tasks in that section
-4. Format output as a clean list with section headers
-
-### `/todo move <identifier> <section>`
-1. Read `TODO.md`
-2. Find the task matching `<identifier>`
-3. Remove it (and any sub-items) from its current section
-4. Insert it under the target section (`today`, `backlog`, or `waiting`)
-5. Write updated `TODO.md`
-6. Confirm to user: "Moved to [section]: <description>"
-
-## Task Identification
-
-When the user provides an `<identifier>`:
-- **Number**: Count tasks across Today, Backlog, and Waiting sections (1-indexed). Task 1 is the first task in Today, numbering continues through Backlog, then Waiting.
-- **Text**: Substring match against task descriptions (case-insensitive). If ambiguous, ask the user to clarify.
-
-## Cross-Linking Rules
-
-- **On task creation**: Task gets `([[YYYY-MM-DD]])` linking to the daily note for the creation date
-- **On task completion/cancellation**: Task gets `✅ [[YYYY-MM-DD]]` or `❌ [[YYYY-MM-DD]]`, and today's daily note gets an entry under `## Completed`
-- **Daily note path**: `Daily notes/YYYY/MM-<Month>/YYYY-MM-DD.md` relative to vault root (e.g., `Daily notes/2026/03-March/2026-03-30.md`). Create parent directories if they don't exist.
+### `/todo list [status]`
+1. Glob `Commitments/*.md` (skip `.gitkeep`), read frontmatter, default filter `status: open`.
+2. Sort by `sort_key` ascending.
+3. Display as: `<due_date or "open-ended"> — <title> (<complexity>)`.
 
 ## Implementation
 
-Use Read, Edit, and Write tools directly on the markdown files. No external scripts or plugins needed. The TODO.md file and daily notes are plain markdown in the Obsidian vault at `/Users/luke.snyder/code/Vaults/Work/`.
+Delegate every write to `sod.py` (add/done/cancel change frontmatter directly for done/cancel since `sod.py` has no such subcommands, but always finish with `sod.py commitments` to keep `sort_key` consistent). `list` is read-only via Glob/Read — no script needed for that.
