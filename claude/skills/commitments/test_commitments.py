@@ -1,4 +1,5 @@
 import datetime as dt
+import json
 import os
 import tempfile
 import unittest
@@ -205,6 +206,54 @@ class TestCommitments(unittest.TestCase):
         self.assertEqual(note["status"], "open")
         self.assertEqual(note["tags"], ["training", "compliance"])
         self.assertEqual(note["committed_date"], "2026-09-12")
+
+
+class TestList(unittest.TestCase):
+    def setUp(self):
+        commitments.COMMITMENTS_DIR = Path(tempfile.mkdtemp())
+
+    def add(self, **kw):
+        fields = dict(
+            title="A commitment", summary="s", link="https://slack/x",
+            committed_date="2026-09-14", due_date="2026-09-16",
+            complexity="medium", tags=[],
+        )
+        fields.update(kw)
+        return commitments.upsert_commitment(**fields)
+
+    def test_json_default_excludes_done(self):
+        self.add(link="l1", title="Open one")
+        _, path = self.add(link="l2", title="Done one")
+        note = commitments.read_note(path)
+        fields = {k: v for k, v in note.items() if not k.startswith("_")}
+        fields["status"] = "done"
+        commitments.write_note(path, fields, note.get("_body", ""))
+        out = json.loads(commitments.cmd_list(as_json=True))
+        self.assertEqual([n["title"] for n in out], ["Open one"])
+
+    def test_json_include_done(self):
+        self.add(link="l1", title="Open one")
+        _, path = self.add(link="l2", title="Done one")
+        note = commitments.read_note(path)
+        fields = {k: v for k, v in note.items() if not k.startswith("_")}
+        fields["status"] = "done"
+        commitments.write_note(path, fields, note.get("_body", ""))
+        out = json.loads(commitments.cmd_list(include_done=True, as_json=True))
+        self.assertEqual(sorted(n["title"] for n in out), ["Done one", "Open one"])
+
+    def test_json_shape_matches_commitment_fields(self):
+        self.add(link="l1", title="A thing")
+        out = json.loads(commitments.cmd_list(as_json=True))
+        self.assertEqual(set(out[0].keys()), set(commitments.COMMITMENT_FIELDS))
+
+    def test_human_readable_default(self):
+        self.add(link="l1", title="A thing", due_date="2026-09-20")
+        out = commitments.cmd_list()
+        self.assertIn("A thing", out)
+        self.assertIn("2026-09-20", out)
+
+    def test_human_readable_empty(self):
+        self.assertIn("No commitments", commitments.cmd_list())
 
 
 if __name__ == "__main__":

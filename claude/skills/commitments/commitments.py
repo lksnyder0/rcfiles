@@ -221,6 +221,20 @@ def cmd_commitments(ref=None):
     return f"Commitments: {len(notes)} open, sort keys recomputed"
 
 
+def cmd_list(include_done=False, as_json=False):
+    notes = load_commitments(include_done=include_done)
+    if as_json:
+        return json.dumps([{k: n.get(k) for k in COMMITMENT_FIELDS} for n in notes])
+    if not notes:
+        return "_No commitments._"
+    lines = []
+    for n in notes:
+        due = n.get("due_date") or "open-ended"
+        lines.append(f"{due} — {n.get('title', '')} "
+                     f"({n.get('complexity') or 'unknown'}) [{n.get('status', 'open')}]")
+    return "\n".join(lines)
+
+
 def cmd_commit_add(args):
     action, path = upsert_commitment(
         title=args.title, summary=args.summary, link=args.link,
@@ -243,11 +257,16 @@ def main(argv=None):
     add.add_argument("--tags", default="", help="comma-separated")
     add.add_argument("--body", help="note body; defaults to a link back to the source")
     sub.add_parser("commitments", help="recompute open-commitment sort keys")
+    lst = sub.add_parser("list", help="list commitments")
+    lst.add_argument("--include-done", action="store_true")
+    lst.add_argument("--json", action="store_true", dest="as_json")
     args = parser.parse_args(argv)
     if args.cmd == "commit-add":
         print(cmd_commit_add(args))
     elif args.cmd == "commitments":
         print(cmd_commitments())
+    elif args.cmd == "list":
+        print(cmd_list(include_done=args.include_done, as_json=args.as_json))
 
 
 if __name__ == "__main__":
