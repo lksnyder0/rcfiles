@@ -12,6 +12,7 @@ Almost all of this is deterministic and lives in `sod.py`. Your only judgment ca
 
 **Vault root:** `/Users/luke.snyder/code/Vaults/Work`
 **Script:** `~/.claude/skills/sod/sod.py` (all commands below assume `python3 ~/.claude/skills/sod/sod.py`)
+**Commitments script:** `~/.claude/skills/commitments/commitments.py` (used by `commit-add`/`commitments` commands below)
 
 ## What you must NOT do
 

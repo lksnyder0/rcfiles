@@ -229,7 +229,7 @@ Same schema and dedup as SOD Step 4 — reuse it rather than re-implementing.
    ```
    Apply the same complexity rubric as SOD (`~/.claude/skills/sod/SKILL.md`): low = under ~30 min, medium = a few hours to a day, high = more than a day or unclear scope.
 4. The script reports `created`, `updated`, or `duplicate` — do not re-litigate its decision.
-5. Do the same for open tasks surfaced by Claude sessions (Step 1e.5): synthesize a stable `--link` of the form `session://<session-id>-<slugified-task>` so re-runs dedup instead of creating duplicates.
+5. Do the same for open tasks surfaced by Claude sessions (Step 1e.3): synthesize a stable `--link` of the form `session://<session-id>-<slugified-task>` so re-runs dedup instead of creating duplicates.
 6. If no commitments were created or updated, omit the Suggested Commitments section.
 
 ### Tomorrow Recommendation
@@ -263,7 +263,7 @@ Build the daily note content with these sections (omit any section that has no d
 
 ## Step 3: Write Output
 
-Write all output files directly. No review gate — all suggested items (TODOs, Research Note Updates, New Notes) are auto-accepted.
+Write all output files directly. No review gate — all suggested items (Commitments, Research Note Updates, New Notes) are auto-accepted.
 
 **Execution order:** Run 3a first (creates/updates the daily note). Then run 3b, 3c, and 3d in parallel (they write to independent files). Then run 3e (moves files, appends to the daily note). Run 3f last (creates new Note files and updates the daily note).
 

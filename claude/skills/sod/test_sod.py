@@ -11,6 +11,11 @@ os.environ["SOD_VAULT"] = _TMP
 import sod
 
 
+class TestCommitmentsVaultBridge(unittest.TestCase):
+    def test_sod_vault_bridges_to_commitments_vault(self):
+        self.assertEqual(os.environ.get("COMMITMENTS_VAULT"), str(sod.VAULT))
+
+
 class TestFrontmatter(unittest.TestCase):
     def setUp(self):
         self.dir = Path(tempfile.mkdtemp())

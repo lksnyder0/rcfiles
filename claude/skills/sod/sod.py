@@ -2,8 +2,8 @@
 """Start-of-day: seed the four-section daily note and regenerate its two Bases.
 
 Stdlib only by design — PyYAML is not installed and must not be added.
-This script owns every deterministic decision; the SOD skill only supplies
-human-judged commitments via `commit-add`.
+This script owns every deterministic decision; human-judged commitments are
+supplied via `commitments.py`'s `commit-add`.
 """
 import argparse
 import datetime as dt
@@ -15,6 +15,7 @@ import time
 from pathlib import Path
 
 VAULT = Path(os.environ.get("SOD_VAULT", "/Users/luke.snyder/code/Vaults/Work"))
+os.environ.setdefault("COMMITMENTS_VAULT", str(VAULT))
 PROJECT_DIR = VAULT / "Project Work"
 TODO_PATH = VAULT / "TODO.md"
 DAILY_DIR = VAULT / "Daily notes"
@@ -26,7 +27,7 @@ def load_commitments(include_done=False):
     args = ["python3", str(COMMITMENTS_SCRIPT), "list", "--json"]
     if include_done:
         args.append("--include-done")
-    return json.loads(sh(args))
+    return json.loads(sh(args, retries=0))
 
 
 COMPLEXITY_RANK = {"low": 0, "medium": 1, "high": 2}
