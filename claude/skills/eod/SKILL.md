@@ -10,7 +10,7 @@ Generate a structured daily note by gathering activity from Shortcut, GitHub, Sl
 
 **Vault root:** `/Users/luke.snyder/code/Vaults/Work`
 **Daily note path:** `Daily notes/YYYY/MM-<Month>/YYYY-MM-DD.md` (use today's date, e.g., `Daily notes/2026/03-March/2026-03-30.md`)
-**Commitments path:** `Commitments/` (relative to vault root) — managed via `~/.claude/skills/sod/sod.py`, shared with SOD. Never create or edit `Commitments/` notes by hand; always go through `commit-add`/`commitments`.
+**Commitments path:** `Commitments/` (relative to vault root) — managed via `~/.claude/skills/commitments/commitments.py`, shared with SOD. Never create or edit `Commitments/` notes by hand; always go through `commit-add`/`commitments`.
 **Specs path:** `Specs/` (relative to vault root)
 **Plans path:** `Plans/` (relative to vault root)
 **Notes path:** `Notes/` (relative to vault root)

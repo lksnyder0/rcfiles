@@ -16,7 +16,7 @@ Almost all of this is deterministic and lives in `sod.py`. Your only judgment ca
 ## What you must NOT do
 
 - Never hand-write the PR REVIEW BACKLOG table, the IMPORTANT TODAY list, or any `Project Work/` note. All three are script output by design, so two runs with unchanged upstream state produce identical text.
-- Never create or edit `Commitments/` notes directly. Use `commit-add`, which owns dedup and filenames.
+- Never create or edit `Commitments/` notes directly. Use `commitments.py commit-add`, which owns dedup and filenames.
 - Never fall back to the Shortcut MCP tools. PROJECT WORK must come from `short api` or not at all — the MCP path is not reproducible.
 - Never delegate Glean searches to a subagent. Subagents have fabricated Slack messages and incidents in the past. Call `mcp__glean_claude-code__search` yourself, in the main session.
 
@@ -70,7 +70,7 @@ Judge which candidates are genuine assigned trainings. Reject newsletters, marke
 One call per surviving commitment, Slack and email alike — they share one Base and one schema:
 
 ```bash
-python3 ~/.claude/skills/sod/sod.py commit-add \
+python3 ~/.claude/skills/commitments/commitments.py commit-add \
   --title "Send Connor the Elastic user info" \
   --summary "Promised in DM to send the Elastic user list by EOD." \
   --link "https://huntress.slack.com/archives/C03TRM93V0C/p1757894400123456" \
@@ -104,7 +104,7 @@ In this exact order:
 
 ```bash
 python3 ~/.claude/skills/sod/sod.py project-work
-python3 ~/.claude/skills/sod/sod.py commitments
+python3 ~/.claude/skills/commitments/commitments.py commitments
 python3 ~/.claude/skills/sod/sod.py daily-note
 ```
 
@@ -160,7 +160,7 @@ python3 ~/.claude/skills/sod/sod.py todos
 To migrate one, pass its `todo://` key as `--link` and its sub-bullets as `--body`:
 
 ```bash
-python3 ~/.claude/skills/sod/sod.py commit-add \
+python3 ~/.claude/skills/commitments/commitments.py commit-add \
   --title "Check back on the process ILM cold tier prediction" \
   --summary "Verify the predictions from the cold-tier rebalance design." \
   --link "todo://check-back-on-the-process-ilm-cold-tier-prediction-due-2026-10-12-elasticsearch" \
