@@ -126,9 +126,128 @@ def slugify(text, limit=60):
     return (slug[:limit].rstrip("-")) or "commitment"
 
 
+COMMITMENT_FIELDS = ("title", "committed_date", "due_date", "complexity",
+                     "tags", "summary", "link", "status", "sort_key")
+
+
+def load_commitments(include_done=False):
+    if not COMMITMENTS_DIR.exists():
+        return []
+    notes = [read_note(p) for p in sorted(COMMITMENTS_DIR.glob("*.md"))]
+    notes = [n for n in notes if n.get("link")]
+    if not include_done:
+        notes = [n for n in notes if n.get("status", "open") != "done"]
+    return notes
+
+
+def _tokens(title):
+    words = re.findall(r"[a-z0-9]+", str(title).lower())
+    return {w for w in words if len(w) >= 4}
+
+
+def similar_title(a, b, threshold=0.6):
+    """Crude Jaccard overlap on long tokens. The agent has already judged these
+    candidates; this only has to catch obvious cross-day restatements."""
+    ta, tb = _tokens(a), _tokens(b)
+    if not ta or not tb:
+        return False
+    return len(ta & tb) / len(ta | tb) >= threshold
+
+
+def commitment_sort_tuple(note, ref):
+    """Overdue pinned first, then due_date asc, then complexity asc.
+    Missing complexity sorts last within its tier."""
+    due = parse_date(note.get("due_date"))
+    if due is None:
+        tier = 2
+    elif due < ref:
+        tier = 0
+    else:
+        tier = 1
+    return (tier, due or FAR_FUTURE,
+            complexity_rank(note.get("complexity")), str(note.get("title", "")))
+
+
+def upsert_commitment(title, summary, link, committed_date,
+                      due_date=None, complexity=None, tags=None, body=None):
+    COMMITMENTS_DIR.mkdir(parents=True, exist_ok=True)
+    existing = load_commitments(include_done=True)
+
+    # Same permalink: a same-day re-run rescanning the same window.
+    for note in existing:
+        if note.get("link") == link:
+            return "duplicate", note["_path"]
+
+    # Different permalink, same underlying commitment restated on a later day.
+    # Only due_date is ever overwritten, so nothing is destroyed on a false hit.
+    for note in existing:
+        if note.get("status", "open") == "done":
+            continue
+        if similar_title(note.get("title", ""), title):
+            fields = {k: note.get(k) for k in COMMITMENT_FIELDS}
+            if due_date and fields.get("due_date") != due_date:
+                fields["due_date"] = due_date
+                write_note(note["_path"], fields, note.get("_body", ""))
+            return "updated", note["_path"]
+
+    stem = f"{committed_date}-{slugify(title)}"
+    path = COMMITMENTS_DIR / f"{stem}.md"
+    suffix = 2
+    while path.exists():
+        path = COMMITMENTS_DIR / f"{stem}-{suffix}.md"
+        suffix += 1
+
+    write_note(path, {
+        "title": str(title)[:150],
+        "committed_date": committed_date,
+        "due_date": due_date,
+        "complexity": complexity,
+        "tags": list(tags or []),
+        "summary": str(summary)[:500],
+        "link": link,
+        "status": "open",
+        "sort_key": 0,
+    }, body if body else f"[Original]({link})\n")
+    return "created", path
+
+
+def cmd_commitments(ref=None):
+    ref = ref or today()
+    notes = load_commitments()
+    for note in assign_sort_keys(notes, lambda n: commitment_sort_tuple(n, ref)):
+        fields = {k: note.get(k) for k in COMMITMENT_FIELDS}
+        fields["sort_key"] = note["sort_key"]
+        write_note(note["_path"], fields, note.get("_body", ""))
+    return f"Commitments: {len(notes)} open, sort keys recomputed"
+
+
+def cmd_commit_add(args):
+    action, path = upsert_commitment(
+        title=args.title, summary=args.summary, link=args.link,
+        committed_date=args.committed_date, due_date=args.due_date,
+        complexity=args.complexity, body=args.body,
+        tags=[t.strip() for t in args.tags.split(",") if t.strip()])
+    return f"{action}: {path}"
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="commitments")
-    parser.parse_args(argv)
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    add = sub.add_parser("commit-add", help="create or update one commitment")
+    add.add_argument("--title", required=True)
+    add.add_argument("--summary", required=True)
+    add.add_argument("--link", required=True)
+    add.add_argument("--committed-date", required=True, dest="committed_date")
+    add.add_argument("--due-date", dest="due_date")
+    add.add_argument("--complexity", choices=["low", "medium", "high"])
+    add.add_argument("--tags", default="", help="comma-separated")
+    add.add_argument("--body", help="note body; defaults to a link back to the source")
+    sub.add_parser("commitments", help="recompute open-commitment sort keys")
+    args = parser.parse_args(argv)
+    if args.cmd == "commit-add":
+        print(cmd_commit_add(args))
+    elif args.cmd == "commitments":
+        print(cmd_commitments())
 
 
 if __name__ == "__main__":
